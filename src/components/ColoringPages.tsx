@@ -5,6 +5,9 @@ const sheets = [
   { id: 'ziggy', name: 'Ziggy', description: 'Zigzags for a very zigzaggy personality.' },
   { id: 'pip', name: 'Pip', description: 'Small in name. Big in possibility.' },
   { id: 'bubbles', name: 'Bubbles', description: 'Round, cheerful, and ready for color.' },
+  { id: 'crab', name: 'Clawdia', description: 'Big claws and a cheerful crabby grin.' },
+  { id: 'seahorse', name: 'Twirl', description: 'A curled-up tail and a rainbow of stripes.' },
+  { id: 'octopus', name: 'Inky', description: 'Eight wiggly arms. So many favorite colors.' },
   { id: 'nautilus', name: 'Nautilus', description: 'A three-window submarine for big adventures.' },
   { id: 'little-explorer', name: 'Little Explorer', description: 'A round-window submarine for little explorers.' },
   { id: 'ribbon-kelp', name: 'Ribbon Kelp', description: 'Long ribbons rooted on the seabed.' },
@@ -13,18 +16,20 @@ const sheets = [
 ];
 
 export function ColoringPages() {
+  const back = new URL(window.location.href);
+  back.searchParams.delete('view');
   return (
     <main className="coloring-page">
       <header className="coloring-header">
         <a className="logo" href="/">magic reef.</a>
-        <a className="text-button" href="/">Back to the aquarium ↗</a>
+        <a className="text-button" href={back.toString()}>Back to the aquarium ↗</a>
       </header>
       <section className="coloring-intro">
         <span className="eyebrow">A little paper ocean</span>
         <h1>Just add <em>their colors.</em></h1>
-        <p>Six fish, two submarines, and three plants, ready for crayons. Fish swim, submarines cruise, and plants grow your underwater garden.</p>
+        <p>Six fish, a crab, a seahorse, an octopus, two submarines, and three plants, ready for crayons. A whole paper ocean waiting for their colors.</p>
         <div className="coloring-actions">
-          <button className="button button-primary" onClick={() => window.print()}>Print all 11 sheets <span aria-hidden="true">↗</span></button>
+          <button className="button button-primary" onClick={() => window.print()}>Print all {sheets.length} sheets <span aria-hidden="true">↗</span></button>
           <span>Landscape A4 · one drawing per page · black &amp; white</span>
         </div>
         <p className="coloring-instructions">Choose A4, landscape, and 100% scale in the print dialog. Turn browser headers and footers off. To save a PDF, choose “Save as PDF” as the printer. Color inside the outline, leave the outside paper white, and photograph one drawing from straight above in good light. AI recognizes its type automatically.</p>

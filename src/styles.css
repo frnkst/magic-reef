@@ -334,3 +334,25 @@ input::placeholder { color: #a1a18a; }
 .size-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .size-choice:has(input:focus-visible) { outline: 3px solid #10aab7; outline-offset: 3px; }
 .drawing-size:disabled .size-choice { opacity: .65; cursor: wait; }
+
+.reef-controls { top: 92px; right: 28px; width: 330px; max-height: calc(100% - 140px); padding: 22px; scrollbar-width: thin; scrollbar-color: #79b8c6 transparent; }
+.reef-controls.controls-hidden { display: none; }
+.reef-controls h1 { font-size: 32px; margin: 8px 0 18px; }
+.controls-heading, .controls-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.controls-heading .text-button { font-size: 11px; padding: 4px 0; }
+.controls-row .glass-button { background: linear-gradient(145deg, #148da1, #07566b); padding: 11px 14px; }
+.controls-row .sound-label { display: inline; }
+.controls-section { border-top: 1px solid #afd7de; padding-top: 18px; margin-top: 18px; }
+.controls-section h2 { font-size: 20px; color: var(--ink); }
+.controls-section > p { font-size: 12px; line-height: 1.8; color: var(--muted); margin-top: 8px; }
+.reef-controls .button { margin-top: 12px; }
+.reef-controls .field-hint { line-height: 1.7; color: var(--muted); }
+.reef-controls .reef-filter { position: static; max-width: none; margin-top: 18px; padding: 12px; border-radius: 18px; }
+.reef-controls .reef-filter select { flex: 1; min-width: 0; max-width: 100%; }
+.reef-controls .reef-filter label { width: 100%; }
+.reef-controls .owner-upload { border: 0; padding-top: 0; margin-top: 12px; }
+.reef-controls .copy-button { font-size: 11px; }
+.reef-controls .sound-error { position: static; width: auto; margin-top: 8px; font-size: 11px; }
+@media (max-width: 800px) {
+  .reef-controls { top: 82px; right: 18px; width: min(330px, calc(100% - 36px)); max-height: calc(100% - 130px); padding: 20px; }
+}

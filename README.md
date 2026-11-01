@@ -173,7 +173,7 @@ model/provider availability depends on those settings.
   Choose a previously used name or type a new one. It is separate from the drawing's
   own name. Use **Whose drawings?** in the aquarium to see one child's artwork,
   or **Everyone's reef** to see the whole party.
-- Select **Share reef**, then **Copy aquarium link** or **Send to parents**.
+- Open **Reef controls**, then **Copy aquarium link** or **Send to parents**.
   A selected child is included in the viewing link; parents can still switch
   back to everyone. This is a viewing filter, not private access control.
   Sharing sends the existing room's link, not a copy of its database.
@@ -183,7 +183,11 @@ model/provider availability depends on those settings.
   storage. Go back to the homepage and select **Open your aquarium** to reopen
   the latest room. This is browser-specific; clearing site data or leaving a private
   browsing session removes the saved link. Bookmark the URL as a backup.
-- Select **Sound off** in the aquarium toolbar to enable soft aquarium water-flow
+- The **Reef controls** sidebar includes coloring printouts, the child filter,
+  sharing links, the owner's upload QR code, login, sound, and fullscreen.
+  It opens by default on desktop and can be hidden without stopping audio.
+  Printouts open in a new tab and keep a return link to the current aquarium.
+- Select **Sound off** in the sidebar to enable soft aquarium water-flow
   sound from the supplied `soul_serenity_sounds-water-noises-241049.mp3` recording.
   `public/aquarium-water.wav` is a 20-second mono excerpt with a one-second
   crossfaded loop join. Select **Sound on** to mute. The recording loads only after
@@ -191,8 +195,9 @@ model/provider availability depends on those settings.
 
 ## Printable coloring sheets
 
-Open **Print coloring sheets** on the homepage (or `/?view=coloring`).
-Eleven original vector sheets (six fish, two submarines, and three plants) have
+Open **Print coloring sheets** in the aquarium sidebar or on the homepage (or `/?view=coloring`).
+Fourteen original vector sheets (six fish, a crab, a seahorse, an octopus,
+two submarines, and three plants) have
 closed black outlines, large coloring areas, and clear identifying features.
 Print them on landscape A4, one drawing per page, or save a
 PDF through the print dialog. Disable browser headers/footers and use 100% scale.
@@ -215,6 +220,9 @@ plant drawings remain stationary.
 Choose **Small**, **Medium**, or **Large** before releasing any fish, submarine,
 or plant. Medium is the default, including for previously saved drawings.
 Fish and submarines are larger than before; Large is a bold centerpiece.
+Each fish also gets a stable, ID-based size variation of up to 8% either way,
+so companions in the same size category are not identical. Reloading or viewing
+on another device keeps that variation; submarines and plants keep their chosen size.
 The same saved size is shown on every viewing screen, with responsive fitting
 to keep drawings inside narrow aquariums. Size does not redraw the artwork or
 make another AI request. Plants remain rooted to the seabed at every size.

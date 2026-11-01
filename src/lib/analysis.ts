@@ -29,8 +29,8 @@ const pointSchema = {
 export const analysisSchema = {
   type: 'object',
   properties: {
-    found: { type: 'boolean', description: 'True if one complete fish, submarine, or underwater plant drawing can be identified.' },
-    kind: { type: 'string', enum: ['fish', 'submarine', 'plant'], description: 'The actual subject: fish, submarine, or stationary underwater plant.' },
+    found: { type: 'boolean', description: 'True if one complete sea creature (including fish, crab, seahorse, or octopus), submarine, or underwater plant drawing can be identified.' },
+    kind: { type: 'string', enum: ['fish', 'submarine', 'plant'], description: 'The actual subject: fish means any sea creature, including crab, seahorse, or octopus; otherwise submarine or stationary underwater plant.' },
     confidence: { type: 'number', description: 'Confidence from 0 to 1 in the contour and landmarks.' },
     reason: { type: 'string', description: 'Brief explanation, or actionable photography advice if no supported drawing is found.' },
     outline: {

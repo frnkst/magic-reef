@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Clawdia the crab coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m265 249-101-30-52 42 17 24 46-31 87 29m-2 6-85 7-42 50 22 19 40-40 78-2m252-74 101-30 52 42-17 24-46-31-87 29m2 6 85 7 42 50-22 19-40-40-78-2"/>
+    <path d="M277 233 191 169l-24-66-29 11 22 77 99 83m264-41 86-64 24-66 29 11-22 77-99 83"/>
+    <path d="M165 128C91 144 66 83 100 42l38 46 14-59c54 9 66 74 13 99Zm470 0c74 16 99-45 65-86l-38 46-14-59c-54 9-66 74-13 99Z"/>
+    <path d="M331 183v-53h26v51m86 2v-53h26v51"/>
+    <circle cx="344" cy="110" r="29"/><circle cx="456" cy="110" r="29"/>
+    <circle cx="350" cy="110" r="10" fill="black" stroke="none"/><circle cx="450" cy="110" r="10" fill="black" stroke="none"/>
+    <path d="M247 254c0-117 306-117 306 0 0 108-306 108-306 0Z"/>
+    <path d="M355 267q45 43 90 0" fill="none"/>
+    <circle cx="311" cy="245" r="16"/><circle cx="489" cy="245" r="16"/>
+    <path d="m324 322-35 57 25 13 38-61m124-9 35 57-25 13-38-61"/>
+  </g>
+</svg>

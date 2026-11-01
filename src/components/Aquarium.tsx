@@ -22,17 +22,24 @@ interface SceneState {
   disposed: boolean;
 }
 
+function sizeVariation(drawing: Fish) {
+  if (drawing.kind && drawing.kind !== 'fish') return 1;
+  let hash = 2166136261;
+  for (const character of drawing.id) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
+  return 0.92 + (hash % 1001) / 1000 * 0.16;
+}
+
 function drawingHeight(drawing: Fish) {
   const size = drawing.size ?? 'medium';
   const heights = drawing.kind === 'plant' ? { small: 1.6, medium: 2.5, large: 4 }
     : drawing.kind === 'submarine' ? { small: 1.2, medium: 1.9, large: 3.3 }
       : { small: 1.3, medium: 2, large: 3.5 };
-  return heights[size];
+  return heights[size] * sizeVariation(drawing);
 }
 
 function drawingFit(drawing: Fish, height: number, width: number) {
   const fraction = { small: 0.35, medium: 0.5, large: 0.75 }[drawing.size ?? 'medium'];
-  return Math.min(1, width * fraction / (height * drawing.aspect));
+  return Math.min(1, width * fraction * sizeVariation(drawing) / (height * drawing.aspect));
 }
 
 function plantPosition(id: string, width: number, height: number, aspect: number, fit: number) {

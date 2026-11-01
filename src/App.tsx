@@ -46,7 +46,7 @@ export function App() {
   const [synced, setSynced] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
-  const [invite, setInvite] = useState(false);
+  const [invite, setInvite] = useState(() => window.innerWidth > 800);
   const [qr, setQr] = useState('');
   const [qrError, setQrError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
@@ -57,6 +57,8 @@ export function App() {
   const graphicsFailure = useCallback((message: string) => setGraphicsError(message), []);
   const phoneLink = reefLink(token, demo, true);
   const publicLink = reefLink(token, demo, false, childFilter);
+  const printLink = new URL(publicLink);
+  printLink.searchParams.set('view', 'coloring');
   const allDrawings = demo ? [...samples, ...fish] : fish;
   const childNames = [...new Map(allDrawings.filter((drawing) => drawing.child?.trim())
     .map((drawing) => [drawing.child!.trim().toLocaleLowerCase(), drawing.child!.trim()])).values()]
@@ -258,12 +260,18 @@ export function App() {
     <header className="tank-header">
       <Logo light />
       <div className="tank-tools">
-        <AquariumSound />
-        <button className="glass-button" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide panel' : 'Share reef'} <span aria-hidden="true">↗</span></button>
-        <OwnerButton owner={owner} light />
-        <button className="glass-button fullscreen-button" onClick={fullscreen}>Full screen <span aria-hidden="true">⛶</span></button>
+        <button className="glass-button" aria-expanded={invite} aria-controls="reef-controls" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide controls' : 'Reef controls'} <span aria-hidden="true">↗</span></button>
       </div>
     </header>
+    <aside id="reef-controls" className={`invite-card reef-controls${invite ? '' : ' controls-hidden'}`} aria-label="Aquarium controls" inert={!invite}>
+      <div className="controls-heading"><span className="eyebrow">Your little ocean</span><button className="text-button" aria-label="Close aquarium controls" onClick={() => setInvite(false)}>Close ×</button></div>
+      <h1>Reef <em>station.</em></h1>
+      <div className="controls-row"><AquariumSound /><button className="glass-button" onClick={fullscreen}>Full screen <span aria-hidden="true">⛶</span></button></div>
+      <section className="controls-section">
+        <h2>Paper to ocean</h2>
+        <a className="button button-secondary" href={printLink.toString()} target="_blank" rel="noreferrer">Print coloring sheets <span aria-hidden="true">↗</span></a>
+        <p className="field-hint">14 original sheets, including a crab, seahorse, and octopus. Opens in a new tab; your reef stays here.</p>
+      </section>
     {(childNames.length > 0 || childFilter) && <div className="reef-filter">
       <label htmlFor="reef-child">Whose drawings?</label>
       <select id="reef-child" value={childFilter} onChange={(event) => filterByChild(event.target.value)}>
@@ -273,9 +281,8 @@ export function App() {
       </select>
       {childFilter && <button className="glass-button" onClick={() => filterByChild('')}>Show everyone</button>}
     </div>}
-    {invite && <aside className="invite-card">
-      <span className="eyebrow">{demo ? 'A little practice ocean' : 'A little ocean to share'}</span>
-      <h1>{childFilter ? <>{childFilter}’s<br /><em>little reef.</em></> : <>Send a little<br /><em>sea magic.</em></>}</h1>
+      <section className="controls-section">
+      <h2>{demo ? 'Practice reef' : childFilter ? `${childFilter}’s viewing link` : 'Share the sea magic'}</h2>
       {demo ? <>
         <p>This demo lives in this browser only. AI uploads work locally with an OpenRouter key; deployed uploads need a shared aquarium.</p>
         {owner.allowed && <a className="button button-primary" href={phoneLink}>Add a drawing <span aria-hidden="true">↗</span></a>}
@@ -287,14 +294,20 @@ export function App() {
         <span className="copy-status" role="status">{copyStatus}</span>
         <input className="share-link" aria-label="Public aquarium viewing link" value={publicLink} readOnly onFocus={(event) => event.target.select()} />
         <p className="privacy-note">{childFilter ? 'This link opens the selected child’s drawings. Parents can still switch to everyone.' : 'This link opens the whole aquarium.'} Anyone with the link can view the drawings and first names. Only the signed-in owner can add drawings.</p>
-        {owner.allowed && <div className="owner-upload">
+      </>}
+      </section>
+      <section className="controls-section drawing-station">
+        <div className="controls-heading"><h2>Drawing station</h2><OwnerButton owner={owner} /></div>
+        {!owner.allowed && <p className="field-hint">Sign in as owner to upload drawings from your phone. Everyone can watch without signing in.</p>}
+        {!demo && owner.allowed && <div className="owner-upload">
           <span className="eyebrow">Owner’s drawing station</span>
           <div className="qr-code">{qr ? <img src={qr} width="180" height="180" alt="QR code for the owner to upload from a phone" /> : <span>{qrError || 'Preparing your phone link…'}</span>}</div>
           <a className="button button-primary" href={phoneLink}>Add a drawing <span aria-hidden="true">＋</span></a>
           <button className="text-button copy-button" onClick={() => { void copyLink(phoneLink); }}>Copy owner upload link</button>
+          <input className="share-link" aria-label="Owner upload link" value={phoneLink} readOnly onFocus={(event) => event.target.select()} />
         </div>}
-      </>}
-    </aside>}
+      </section>
+    </aside>
     {!demo && synced && displayed.length === 0 && <div className="empty-reef"><span className="little-star" aria-hidden="true">✳</span><h2>{childFilter ? <>No drawings for<br />{childFilter} yet.</> : <>Every ocean starts<br />with one little fish.</>}</h2><p>{childFilter ? 'Choose Everyone’s reef to see the party aquarium.' : 'The owner can add the first little masterpiece.'}</p></div>}
     <footer className="tank-footer">
       <span className="tank-status"><span className={`status-dot${!synced ? ' status-pending' : ''}`} />{demo ? 'Local demo · this browser only' : synced ? 'Connected · waiting for little masterpieces' : 'Reconnecting…'}</span>
