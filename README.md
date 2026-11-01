@@ -191,6 +191,10 @@ model/provider availability depends on those settings.
   sharing links, the owner's upload QR code, login, sound, and fullscreen.
   It opens by default on desktop and can be hidden without stopping audio.
   Printouts open in a new tab and keep a return link to the current aquarium.
+  Only the signed-in owner sees these management controls. Anonymous aquarium
+  viewers see just sound on/off, fullscreen, and **Whose drawings?** in a compact
+  panel, with no printout, sharing, upload, or login controls. The owner can
+  still sign in from the homepage or their upload link.
 - Select **Sound off** in the sidebar to enable soft aquarium water-flow
   sound from the supplied `soul_serenity_sounds-water-noises-241049.mp3` recording.
   `public/aquarium-water.wav` is a 20-second mono excerpt with a one-second

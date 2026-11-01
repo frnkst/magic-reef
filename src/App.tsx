@@ -258,31 +258,33 @@ export function App() {
   const crabCount = displayed.filter((drawing) => drawing.movement === 'walk').length;
   return <main className={`tank-page${immersive ? ' immersive' : ''}`}>
     <Aquarium fish={displayed} onError={graphicsFailure} />
-    <header className="tank-header">
+    {owner.allowed && <header className="tank-header">
       <Logo light />
       <div className="tank-tools">
         <button className="glass-button" aria-expanded={invite} aria-controls="reef-controls" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide controls' : 'Reef controls'} <span aria-hidden="true">↗</span></button>
       </div>
-    </header>
-    <aside id="reef-controls" className={`invite-card reef-controls${invite ? '' : ' controls-hidden'}`} aria-label="Aquarium controls" inert={!invite}>
-      <div className="controls-heading"><span className="eyebrow">Your little ocean</span><button className="text-button" aria-label="Close aquarium controls" onClick={() => setInvite(false)}>Close ×</button></div>
-      <h1>Reef <em>station.</em></h1>
+    </header>}
+    <aside id="reef-controls" className={`invite-card reef-controls${owner.allowed ? invite ? '' : ' controls-hidden' : ' viewer-controls'}`} aria-label="Aquarium controls" inert={owner.allowed && !invite}>
+      {owner.allowed && <>
+        <div className="controls-heading"><span className="eyebrow">Your little ocean</span><button className="text-button" aria-label="Close aquarium controls" onClick={() => setInvite(false)}>Close ×</button></div>
+        <h1>Reef <em>station.</em></h1>
+      </>}
       <div className="controls-row"><AquariumSound /><button className="glass-button" onClick={fullscreen}>Full screen <span aria-hidden="true">⛶</span></button></div>
-      <section className="controls-section">
+      {owner.allowed && <section className="controls-section">
         <h2>Paper to ocean</h2>
         <a className="button button-secondary" href={printLink.toString()} target="_blank" rel="noreferrer">Print coloring sheets <span aria-hidden="true">↗</span></a>
         <p className="field-hint">14 original sheets, including a crab, seahorse, and octopus. Opens in a new tab; your reef stays here.</p>
-      </section>
-    {(childNames.length > 0 || childFilter) && <div className="reef-filter">
+      </section>}
+    {(!owner.allowed || childNames.length > 0 || childFilter) && <div className="reef-filter">
       <label htmlFor="reef-child">Whose drawings?</label>
       <select id="reef-child" value={childFilter} onChange={(event) => filterByChild(event.target.value)}>
         <option value="">Everyone’s reef</option>
         {childFilter && !childNames.includes(childFilter) && <option value={childFilter}>{childFilter}</option>}
         {childNames.map((name) => <option key={name} value={name}>{name}</option>)}
       </select>
-      {childFilter && <button className="glass-button" onClick={() => filterByChild('')}>Show everyone</button>}
+      {childFilter && owner.allowed && <button className="glass-button" onClick={() => filterByChild('')}>Show everyone</button>}
     </div>}
-      <section className="controls-section">
+      {owner.allowed && <><section className="controls-section">
       <h2>{demo ? 'Practice reef' : childFilter ? `${childFilter}’s viewing link` : 'Share the sea magic'}</h2>
       {demo ? <>
         <p>This demo lives in this browser only. AI uploads work locally with an OpenRouter key; deployed uploads need a shared aquarium.</p>
@@ -299,7 +301,6 @@ export function App() {
       </section>
       <section className="controls-section drawing-station">
         <div className="controls-heading"><h2>Drawing station</h2><OwnerButton owner={owner} /></div>
-        {!owner.allowed && <p className="field-hint">Sign in as owner to upload drawings from your phone. Everyone can watch without signing in.</p>}
         {!demo && owner.allowed && <div className="owner-upload">
           <span className="eyebrow">Owner’s drawing station</span>
           <div className="qr-code">{qr ? <img src={qr} width="180" height="180" alt="QR code for the owner to upload from a phone" /> : <span>{qrError || 'Preparing your phone link…'}</span>}</div>
@@ -307,7 +308,7 @@ export function App() {
           <button className="text-button copy-button" onClick={() => { void copyLink(phoneLink); }}>Copy owner upload link</button>
           <input className="share-link" aria-label="Owner upload link" value={phoneLink} readOnly onFocus={(event) => event.target.select()} />
         </div>}
-      </section>
+      </section></>}
     </aside>
     {!demo && synced && displayed.length === 0 && <div className="empty-reef"><span className="little-star" aria-hidden="true">✳</span><h2>{childFilter ? <>No drawings for<br />{childFilter} yet.</> : <>Every ocean starts<br />with one little fish.</>}</h2><p>{childFilter ? 'Choose Everyone’s reef to see the party aquarium.' : 'The owner can add the first little masterpiece.'}</p></div>}
     <footer className="tank-footer">
