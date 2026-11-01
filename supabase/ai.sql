@@ -24,7 +24,7 @@ begin
   select t.id into target_id from public.tanks t where t.token = tank_token;
   if target_id is null then raise exception 'Aquarium not found. Scan its QR code again.'; end if;
   if (select count(*) from public.fish f where f.tank_id = target_id) >= 40 then
-    raise exception 'This aquarium is full (40 fish).';
+    raise exception 'This aquarium is full (40 drawings).';
   end if;
   delete from public.fish_analysis_requests where created_at < now() - interval '1 day';
   if (select count(*) from public.fish_analysis_requests

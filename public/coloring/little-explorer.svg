@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Little Explorer submarine coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M197 207 97 142v179l100-62Z"/>
+    <path d="M153 192H81v-29H48v137h33v-29h72Z"/>
+    <path d="M285 160v-39h130v39Z"/>
+    <path d="M334 121V61h73v30h-42v30Z"/>
+    <path d="M233 312v48h78v-35M487 318v42h78v-58"/>
+    <path d="M565 206h124v-43h39v86H584Z"/>
+    <path d="M244 155h243q146 0 161 90-18 87-161 87H244q-112 0-112-88 0-89 112-89Z"/>
+    <path d="M214 165v157M485 156v175" fill="none"/>
+    <circle cx="342" cy="244" r="65"/><circle cx="342" cy="244" r="48"/>
+    <circle cx="341" cy="169" r="5" fill="black"/><circle cx="341" cy="319" r="5" fill="black"/>
+    <circle cx="266" cy="244" r="5" fill="black"/><circle cx="417" cy="244" r="5" fill="black"/>
+    <path d="m311 215 15-15m15 0 15-15M511 213h51m-51 29h63m-63 29h51" fill="none" stroke-width="4"/>
+  </g>
+</svg>

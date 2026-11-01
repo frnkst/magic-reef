@@ -199,36 +199,38 @@ export function App() {
   }
 
   const displayed = demo ? [...samples, ...fish] : fish;
+  const submarineCount = displayed.filter((drawing) => drawing.kind === 'submarine').length;
+  const plantCount = displayed.filter((drawing) => drawing.kind === 'plant').length;
   return <main className={`tank-page${immersive ? ' immersive' : ''}`}>
     <Aquarium fish={displayed} onError={graphicsFailure} />
     <header className="tank-header">
       <Logo light />
       <div className="tank-tools">
-        <button className="glass-button" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide' : 'Add a fish'} <span aria-hidden="true">＋</span></button>
+        <button className="glass-button" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide' : 'Add a drawing'} <span aria-hidden="true">＋</span></button>
         <button className="glass-button fullscreen-button" onClick={fullscreen}>Full screen <span aria-hidden="true">⛶</span></button>
       </div>
     </header>
     {invite && <aside className="invite-card">
-      <span className="eyebrow">{demo ? 'A little practice ocean' : 'The next fish is yours'}</span>
+      <span className="eyebrow">{demo ? 'A little practice ocean' : 'The next drawing is yours'}</span>
       <h1>Bring a drawing<br /><em>to life.</em></h1>
       {demo ? <>
         <p>This demo lives in this browser only. AI uploads work locally with an OpenRouter key; deployed uploads need a shared aquarium.</p>
         <a className="button button-primary" href={phoneLink}>Add a drawing <span aria-hidden="true">↗</span></a>
         <p className="field-hint">The three starter fish are original sample drawings.</p>
       </> : <>
-        <p>Scan with your phone. Take a photo of a paper fish. Watch it swim here.</p>
+        <p>Scan with your phone. Add a fish, submarine, or plant. Watch your artwork join the reef.</p>
         <div className="qr-code">{qr ? <img src={qr} width="180" height="180" alt="QR code to add a drawing from your phone" /> : <span>{qrError || 'Preparing your phone link…'}</span>}</div>
-        <a className="phone-link" href={phoneLink}>Or add a fish on this device ↗</a>
+        <a className="phone-link" href={phoneLink}>Or add a drawing on this device ↗</a>
         <button className="text-button copy-button" onClick={copyLink}>Copy phone link</button>
         <span className="copy-status" role="status">{copyStatus}</span>
         <input className="share-link" aria-label="Phone upload link" value={phoneLink} readOnly onFocus={(event) => event.target.select()} />
-        <p className="privacy-note">Keep this link in your family. Anyone with it can view this aquarium and add fish.</p>
+        <p className="privacy-note">Keep this link in your family. Anyone with it can view this aquarium and add drawings.</p>
       </>}
     </aside>}
     {!demo && synced && fish.length === 0 && <div className="empty-reef"><span className="little-star" aria-hidden="true">✳</span><h2>Every ocean starts<br />with one little fish.</h2><p>Draw yours. We’ll keep the water warm.</p></div>}
     <footer className="tank-footer">
       <span className="tank-status"><span className={`status-dot${!synced ? ' status-pending' : ''}`} />{demo ? 'Local demo · this browser only' : synced ? 'Connected · waiting for little masterpieces' : 'Reconnecting…'}</span>
-      <span>{displayed.length} {displayed.length === 1 ? 'fish' : 'fish'} in the reef</span>
+      <span>{displayed.length - submarineCount - plantCount} fish · {submarineCount} submarine{submarineCount === 1 ? '' : 's'} · {plantCount} plant{plantCount === 1 ? '' : 's'}</span>
     </footer>
     {(syncError || graphicsError || startError) && <div className="tank-errors" role="alert">
       {syncError && <p>{syncError} Retrying every few seconds.</p>}
@@ -269,8 +271,8 @@ function UploadPage({ connected, syncError, synced, count }: {
       : released ? <section className="success-page">
         <span className="success-mark" aria-hidden="true">✳</span>
         <span className="eyebrow">03 / Into the big blue</span>
-        <h1>{released} has<br /><em>found their fins.</em></h1>
-        <p>{demo ? 'Your drawing is saved in this browser’s demo aquarium.' : 'Look up at the laptop. Your fish will swim in within a few seconds.'}</p>
+        <h1>{released} has<br /><em>joined the reef.</em></h1>
+        <p>{demo ? 'Your drawing is saved in this browser’s demo aquarium.' : 'Look up at the laptop. Your drawing will appear within a few seconds.'}</p>
         <button className="button button-primary" onClick={() => { setReleased(''); setPhoto(null); }}>Add another drawing <span aria-hidden="true">＋</span></button>
         <a className="text-button" href={reefLink(token, demo)}>Watch the aquarium →</a>
       </section>
@@ -293,9 +295,9 @@ function UploadPage({ connected, syncError, synced, count }: {
               onChange={(event) => { void choose(event.target.files?.[0]); event.target.value = ''; }} />
           </label>
         </>}
-        <p className="photo-tip"><strong>A small tip for a great fish</strong>Use plain white paper and a closed, dark outline. Photograph from straight above in good light, with no hands or other drawings in the frame.</p>
-        <a className="text-button" href="/?view=coloring" target="_blank" rel="noreferrer">Need a fish to color? Print a sheet ↗</a>
-        <p className="privacy-note">Selecting a photo sends a resized copy to OpenRouter and its AI provider to find the fish. Avoid faces and personal details. You approve the cutout before it is saved in the aquarium.</p>
+        <p className="photo-tip"><strong>Fish, submarines, or plants</strong>Use plain white paper and a closed, dark outline. Photograph one drawing from straight above in good light, with no hands or other drawings in the frame.</p>
+        <a className="text-button" href="/?view=coloring" target="_blank" rel="noreferrer">Need something to color? Print a sheet ↗</a>
+        <p className="privacy-note">Selecting a photo sends a resized copy to OpenRouter and its AI provider to identify the drawing. Avoid faces and personal details. You approve the cutout before it is saved in the aquarium.</p>
         {error && <p className="error" role="alert">{error}</p>}
       </section>}
     {syncError && <p className="upload-sync-error error" role="alert">{syncError} Retrying…</p>}

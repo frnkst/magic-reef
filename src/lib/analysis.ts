@@ -1,3 +1,5 @@
+import type { DrawingKind } from './reef.ts';
+
 export interface Point {
   x: number;
   y: number;
@@ -11,6 +13,7 @@ export interface FishAnalysis {
   head: Point;
   tail: Point;
   back: Point;
+  kind: DrawingKind;
 }
 
 const pointSchema = {
@@ -26,19 +29,20 @@ const pointSchema = {
 export const analysisSchema = {
   type: 'object',
   properties: {
-    found: { type: 'boolean', description: 'True if one complete fish drawing or illustration can be identified.' },
+    found: { type: 'boolean', description: 'True if one complete fish, submarine, or underwater plant drawing can be identified.' },
+    kind: { type: 'string', enum: ['fish', 'submarine', 'plant'], description: 'The actual subject: fish, submarine, or stationary underwater plant.' },
     confidence: { type: 'number', description: 'Confidence from 0 to 1 in the contour and landmarks.' },
-    reason: { type: 'string', description: 'Brief explanation, or actionable photography advice if no fish is found.' },
+    reason: { type: 'string', description: 'Brief explanation, or actionable photography advice if no supported drawing is found.' },
     outline: {
       type: 'array',
-      description: 'Exactly four clockwise corners of an axis-aligned bounding rectangle around the entire actual fish, including every fin, tail, and ink outline. Order: top-left, top-right, bottom-right, bottom-left. Include a small margin of plain paper (about 3 percent of the fish size) on every side. Empty if not found.',
+      description: 'Exactly four clockwise corners of an axis-aligned bounding rectangle around the entire drawing, including fins, periscopes, propellers, leaves, roots, and ink outline. Order: top-left, top-right, bottom-right, bottom-left. Include a small margin of plain paper (about 3 percent of subject size) on every side. Empty if not found.',
       items: pointSchema,
     },
-    head: { ...pointSchema, description: 'Tip of the nose/mouth, not the eye.' },
-    tail: { ...pointSchema, description: 'Center of the end of the tail opposite the head.' },
-    back: { ...pointSchema, description: 'A point on the dorsal/top side of the fish, used to keep it upright.' },
+    head: { ...pointSchema, description: 'Fish: nose tip; submarine: front/bow opposite the propeller; plant: uppermost tip of its growth.' },
+    tail: { ...pointSchema, description: 'Fish: center of tail end; submarine: back/stern at the propeller; plant: center of base or roots.' },
+    back: { ...pointSchema, description: 'Fish: dorsal/top side; submarine: top of hull/periscope; plant: a leaf or branch on the right side when upright.' },
   },
-  required: ['found', 'confidence', 'reason', 'outline', 'head', 'tail', 'back'],
+  required: ['found', 'kind', 'confidence', 'reason', 'outline', 'head', 'tail', 'back'],
   additionalProperties: false,
 };
 
@@ -50,19 +54,20 @@ function isPoint(value: unknown): value is Point {
 }
 
 export function parseAnalysis(value: unknown): FishAnalysis {
-  if (!value || typeof value !== 'object') throw new Error('AI returned an invalid fish outline. Try another photo.');
+  if (!value || typeof value !== 'object') throw new Error('AI returned an invalid drawing crop. Try another photo.');
   const result = value as Record<string, unknown>;
   if (typeof result.found !== 'boolean' || typeof result.reason !== 'string' || result.reason.length > 1000
     || typeof result.confidence !== 'number' || !Number.isFinite(result.confidence)
     || result.confidence < 0 || result.confidence > 1
     || !Array.isArray(result.outline) || result.outline.length > 160
     || !result.outline.every(isPoint)
-    || !isPoint(result.head) || !isPoint(result.tail) || !isPoint(result.back)) {
-    throw new Error('AI returned an invalid fish outline. Try another photo.');
+    || !isPoint(result.head) || !isPoint(result.tail) || !isPoint(result.back)
+    || (result.kind !== 'fish' && result.kind !== 'submarine' && result.kind !== 'plant')) {
+    throw new Error('AI returned an invalid drawing crop. Try another photo.');
   }
-  if (!result.found) throw new Error(`AI could not find one complete fish. ${result.reason.trim() || 'Photograph a single drawing clearly from above.'}`);
+  if (!result.found) throw new Error(`AI could not find one complete drawing. ${result.reason.trim() || 'Photograph a single fish, submarine, or plant clearly from above.'}`);
   if (result.confidence < 0.65 || result.outline.length !== 4) {
-    throw new Error('AI could not confidently isolate the drawing. Try a clearer photo with the whole fish visible.');
+    throw new Error('AI could not confidently isolate the drawing. Try a clearer photo with the whole subject visible.');
   }
   const outline = result.outline as Point[];
   const [topLeft, topRight, bottomRight, bottomLeft] = outline;
@@ -79,7 +84,7 @@ export function parseAnalysis(value: unknown): FishAnalysis {
     area += a.x * b.y - b.x * a.y;
   }
   if (Math.abs(area) / 2 < 0.002 || Math.hypot(result.head.x - result.tail.x, result.head.y - result.tail.y) < 0.03) {
-    throw new Error('AI found a fish that is too small to extract. Take a closer photo.');
+    throw new Error('AI found a drawing that is too small to extract. Take a closer photo.');
   }
   const cross = (a: Point, b: Point, c: Point) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
   for (let i = 0; i < outline.length; i++) {
@@ -90,12 +95,12 @@ export function parseAnalysis(value: unknown): FishAnalysis {
       const c = outline[j];
       const d = outline[(j + 1) % outline.length];
       if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) {
-        throw new Error('AI returned a tangled fish outline. Try again with a clearer photo.');
+        throw new Error('AI returned a tangled drawing outline. Try again with a clearer photo.');
       }
     }
   }
   return {
     found: result.found, confidence: result.confidence, reason: result.reason,
-    outline, head: result.head, tail: result.tail, back: result.back,
+    outline, head: result.head, tail: result.tail, back: result.back, kind: result.kind,
   };
 }

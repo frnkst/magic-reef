@@ -75,8 +75,9 @@ export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis):
   const backY = (analysis.back.x * width - center.x) * Math.sin(angle)
     + (analysis.back.y * height - center.y) * Math.cos(angle);
   // Keep the dorsal side up with rotation, never by mirroring the child's drawing.
-  const facing = backY > 0 ? 'left' : 'right';
-  if (backY > 0) angle += Math.PI;
+  const facing = analysis.kind !== 'plant' && backY > 0 ? 'left' : 'right';
+  if (analysis.kind === 'plant') angle -= Math.PI / 2;
+  else if (backY > 0) angle += Math.PI;
   const rotate = (point: Point) => {
     const x = point.x * width - center.x;
     const y = point.y * height - center.y;
@@ -112,7 +113,7 @@ export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis):
   context.drawImage(image, 0, 0);
   removePaper(canvas, context);
   const aspect = canvas.width / canvas.height;
-  if (aspect < 0.2 || aspect > 5) throw new Error('AI found an unusual fish shape. Try a clearer photo of the whole drawing.');
+  if (aspect < 0.2 || aspect > 5) throw new Error('AI found an unusual shape. Try a clearer photo of the whole drawing.');
   let result = canvas.toDataURL('image/png');
   // Reduce resolution, not colors, when a textured photo exceeds the storage limit.
   while (result.length > 700_000 && canvas.width > 160 && canvas.height > 80) {
@@ -128,7 +129,7 @@ export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis):
     result = canvas.toDataURL('image/png');
   }
   if (result.length > 700_000) throw new Error('The cutout is too large to save. Try a better-lit photo.');
-  return { image: result, aspect: canvas.width / canvas.height, facing };
+  return { image: result, aspect: canvas.width / canvas.height, facing, kind: analysis.kind };
 }
 
 function removePaper(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
@@ -182,7 +183,7 @@ function removePaper(canvas: HTMLCanvasElement, context: CanvasRenderingContext2
   let visible = 0;
   for (let index = 3; index < data.length; index += 4) if (data[index] > 0) visible++;
   if (visible < width * height * 0.015) {
-    throw new Error('Too much of the drawing disappeared. Try a well-lit photo with a closed, dark fish outline.');
+    throw new Error('Too much of the drawing disappeared. Try a well-lit photo with a closed, dark outline.');
   }
   context.putImageData(pixels, 0, 0);
 }

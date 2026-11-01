@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Nautilus submarine coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M157 211H98v-46H61v152h37v-47h59Z"/>
+    <path d="M298 177v-51h130v51Z"/>
+    <path d="M342 126V66h65v26h-37v34Z"/>
+    <path d="M491 325h96l35 48h-95Z"/>
+    <path d="M495 177h92l35-48h-95Z"/>
+    <path d="M247 165h294q144 0 179 84-35 84-179 84H247q-115 0-115-84t115-84Z"/>
+    <path d="M211 174v151M595 174q49 76 0 151" fill="none"/>
+    <circle cx="291" cy="249" r="39"/><circle cx="291" cy="249" r="26"/>
+    <circle cx="412" cy="249" r="39"/><circle cx="412" cy="249" r="26"/>
+    <circle cx="534" cy="249" r="39"/><circle cx="534" cy="249" r="26"/>
+    <path d="M318 147h88M235 305h314" fill="none" stroke-width="4"/>
+  </g>
+</svg>

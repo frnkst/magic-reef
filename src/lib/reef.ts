@@ -1,11 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
+export type DrawingKind = 'fish' | 'submarine' | 'plant';
+
 export interface Fish {
   id: string;
   name: string;
   image: string;
   aspect: number;
   facing: 'left' | 'right';
+  kind?: DrawingKind;
 }
 
 interface FishSummary {
@@ -13,6 +16,7 @@ interface FishSummary {
   name: string;
   aspect: number;
   facing: 'left' | 'right';
+  kind: DrawingKind;
 }
 
 const url = import.meta.env.VITE_SUPABASE_URL;
@@ -48,7 +52,8 @@ function isFish(value: unknown): value is Fish {
   return typeof fish.id === 'string' && typeof fish.name === 'string'
     && typeof fish.image === 'string' && fish.image.startsWith('data:image/png;base64,')
     && typeof fish.aspect === 'number' && fish.aspect >= 0.2 && fish.aspect <= 5
-    && (fish.facing === 'left' || fish.facing === 'right');
+    && (fish.facing === 'left' || fish.facing === 'right')
+    && (fish.kind === undefined || fish.kind === 'fish' || fish.kind === 'submarine' || fish.kind === 'plant');
 }
 
 export async function createTank(): Promise<string> {
@@ -61,14 +66,21 @@ export async function createTank(): Promise<string> {
 
 export async function loadFish(token: string, previous: Fish[]): Promise<Fish[]> {
   if (!client) throw new Error('Supabase is not configured. Add the environment variables and redeploy.');
-  const { data, error } = await client.rpc('list_fish', { tank_token: token });
+  const { data, error } = await client.rpc('list_drawings', { tank_token: token });
   if (error) throw new Error(`Could not sync the aquarium: ${error.message}`);
-  if (!Array.isArray(data)) throw new Error('The server returned an invalid fish list.');
+  if (!Array.isArray(data) || !data.every((entry: unknown) => {
+    if (!entry || typeof entry !== 'object') return false;
+    const value = entry as Record<string, unknown>;
+    return typeof value.id === 'string' && typeof value.name === 'string'
+      && typeof value.aspect === 'number' && value.aspect >= 0.2 && value.aspect <= 5
+      && (value.facing === 'left' || value.facing === 'right')
+      && (value.kind === 'fish' || value.kind === 'submarine' || value.kind === 'plant');
+  })) throw new Error('The server returned an invalid drawing list.');
   const summaries = data as FishSummary[];
   const known = new Map(previous.map((fish) => [fish.id, fish]));
   return Promise.all(summaries.map(async (summary) => {
     const existing = known.get(summary.id);
-    if (existing) return existing;
+    if (existing) return { ...existing, kind: summary.kind };
     const result = await client.rpc('get_fish_image', { tank_token: token, fish_id: summary.id });
     if (result.error) throw new Error(`Could not load ${summary.name}: ${result.error.message}`);
     const fish = { ...summary, image: result.data };
@@ -80,7 +92,7 @@ export async function loadFish(token: string, previous: Fish[]): Promise<Fish[]>
 export async function releaseFish(token: string | null, fish: Omit<Fish, 'id'>, demo: boolean): Promise<void> {
   if (demo) {
     const existing = readDemoFish();
-    if (existing.length >= MAX_FISH) throw new Error('This aquarium is full (40 fish).');
+    if (existing.length >= MAX_FISH) throw new Error('This aquarium is full (40 drawings).');
     try {
       localStorage.setItem(DEMO_KEY, JSON.stringify([...existing, { ...fish, id: crypto.randomUUID() }]));
     } catch (error) {
@@ -92,14 +104,15 @@ export async function releaseFish(token: string | null, fish: Omit<Fish, 'id'>, 
     return;
   }
   if (!client || !token) throw new Error('This upload link is not connected to an aquarium.');
-  const { error } = await client.rpc('add_fish', {
+  const { error } = await client.rpc('add_drawing', {
     tank_token: token,
     fish_name: fish.name,
     fish_image: fish.image,
     fish_aspect: fish.aspect,
     fish_facing: fish.facing,
+    drawing_kind: fish.kind ?? 'fish',
   });
-  if (error) throw new Error(`Your fish could not be released: ${error.message}`);
+  if (error) throw new Error(`Your drawing could not be added: ${error.message}`);
 }
 
 export function reefLink(token: string | null, demo: boolean, upload = false): string {

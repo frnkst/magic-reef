@@ -5,6 +5,11 @@ const sheets = [
   { id: 'ziggy', name: 'Ziggy', description: 'Zigzags for a very zigzaggy personality.' },
   { id: 'pip', name: 'Pip', description: 'Small in name. Big in possibility.' },
   { id: 'bubbles', name: 'Bubbles', description: 'Round, cheerful, and ready for color.' },
+  { id: 'nautilus', name: 'Nautilus', description: 'A three-window submarine for big adventures.' },
+  { id: 'little-explorer', name: 'Little Explorer', description: 'A round-window submarine for little explorers.' },
+  { id: 'ribbon-kelp', name: 'Ribbon Kelp', description: 'Long ribbons rooted on the seabed.' },
+  { id: 'sea-sprout', name: 'Sea Sprout', description: 'Leafy branches for your underwater garden.' },
+  { id: 'sea-fan', name: 'Sea Fan', description: 'A branching fan to brighten the seabed.' },
 ];
 
 export function ColoringPages() {
@@ -17,22 +22,22 @@ export function ColoringPages() {
       <section className="coloring-intro">
         <span className="eyebrow">A little paper ocean</span>
         <h1>Just add <em>their colors.</em></h1>
-        <p>Six new friends, ready for crayons. Bold outlines, clear eyes, and unmistakable tails help the AI find the whole fish.</p>
+        <p>Six fish, two submarines, and three plants, ready for crayons. Fish swim, submarines cruise, and plants grow your underwater garden.</p>
         <div className="coloring-actions">
-          <button className="button button-primary" onClick={() => window.print()}>Print all six fish <span aria-hidden="true">↗</span></button>
-          <span>Landscape A4 · one fish per page · black &amp; white</span>
+          <button className="button button-primary" onClick={() => window.print()}>Print all 11 sheets <span aria-hidden="true">↗</span></button>
+          <span>Landscape A4 · one drawing per page · black &amp; white</span>
         </div>
-        <p className="coloring-instructions">Choose A4, landscape, and 100% scale in the print dialog. Turn browser headers and footers off. To save a PDF, choose “Save as PDF” as the printer. Color inside the outline, leave the paper around the fish white, and photograph just one fish from straight above in good light.</p>
+        <p className="coloring-instructions">Choose A4, landscape, and 100% scale in the print dialog. Turn browser headers and footers off. To save a PDF, choose “Save as PDF” as the printer. Color inside the outline, leave the outside paper white, and photograph one drawing from straight above in good light. AI recognizes its type automatically.</p>
       </section>
       <div className="coloring-sheets">
         {sheets.map((sheet, index) => (
           <article className="coloring-sheet" key={sheet.id}>
             <div className="sheet-heading">
-              <div><span className="eyebrow">0{index + 1} / Magic Reef</span><h2>{sheet.name}</h2></div>
-              <a className="text-button sheet-download" href={`/coloring/${sheet.id}.svg`} download={`${sheet.id}-coloring.svg`}>Download this fish ↓</a>
+              <div><span className="eyebrow">{String(index + 1).padStart(2, '0')} / Magic Reef</span><h2>{sheet.name}</h2></div>
+              <a className="text-button sheet-download" href={`/coloring/${sheet.id}.svg`} download={`${sheet.id}-coloring.svg`}>Download this sheet ↓</a>
             </div>
-            <img src={`/coloring/${sheet.id}.svg`} alt={`${sheet.name}: an original black-outline fish for coloring`} width="800" height="460" />
-            <footer className="sheet-footer"><span>{sheet.description}</span><span>Color the fish. Leave the outside paper white.</span></footer>
+            <img src={`/coloring/${sheet.id}.svg`} alt={`${sheet.name}: an original black-outline drawing for coloring`} width="800" height="460" />
+            <footer className="sheet-footer"><span>{sheet.description}</span><span>Color the drawing. Leave the outside paper white.</span></footer>
           </article>
         ))}
       </div>

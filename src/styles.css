@@ -68,6 +68,9 @@ h1 em, h2 em { font-weight: 400; }
 .aquarium::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, #002a3b40, transparent 23%, transparent 77%, #002a3b38); pointer-events: none; }
 .three-scene { position: absolute; inset: 0; z-index: 2; }
 .three-scene canvas { display: block; width: 100%; height: 100%; }
+.shark-status { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 3; max-width: calc(100% - 40px); width: max-content; padding: 8px 13px; border: 1px solid #d9e7d52b; border-radius: 20px; background: #063342b3; color: #eef3e5; font-size: 10px; line-height: 1.6; text-align: center; backdrop-filter: blur(8px); pointer-events: none; }
+.landing-reef .shark-status { bottom: 48px; font-size: 9px; }
+.immersive .shark-status { opacity: .8; bottom: 25px; }
 .preview-topline { position: absolute; top: 33px; left: 75px; right: 29px; z-index: 3; display: flex; align-items: center; gap: 8px; font-size: 10px; color: #f1f6e8; text-shadow: 0 1px 5px #002a3b; }
 .preview-topline > span:last-child { margin-left: auto; font-size: 9px; letter-spacing: .14em; }
 .status-dot { display: inline-block; height: 6px; width: 6px; border-radius: 50%; background: #b3d3a9; flex-shrink: 0; box-shadow: 0 0 10px #b3d3a92b; }

@@ -38,7 +38,7 @@ export function PhotoEditor({ photo, token, demo, onDone, onCancel }: {
     if (!preview || busy) return;
     setBusy(true);
     setSubmitError('');
-    const fishName = name.trim() || 'Little fish';
+    const fishName = name.trim() || (preview.kind === 'plant' ? 'Little plant' : preview.kind === 'submarine' ? 'Little submarine' : 'Little fish');
     try {
       await releaseFish(token, { ...preview, name: fishName }, demo);
       onDone(fishName);
@@ -52,15 +52,15 @@ export function PhotoEditor({ photo, token, demo, onDone, onCancel }: {
     <div className="photo-editor ai-editor">
       <div className="editor-heading">
         <span className="eyebrow">02 / A little AI magic</span>
-        <h1>{preview ? 'Meet your new fish.' : 'Finding their fins.'}</h1>
-        <p>AI handles the cutout and swimming direction. The colors and lines are still entirely theirs.</p>
+        <h1>{preview ? `Meet your new ${preview.kind ?? 'fish'}.` : 'Finding the little details.'}</h1>
+        <p>AI recognizes fish, submarines, and plants, then handles the cutout and orientation. The artwork is still entirely theirs.</p>
       </div>
-      <section className="fish-options" aria-label="Automatically prepared fish">
+      <section className="fish-options" aria-label="Automatically prepared drawing">
         <div className={`cutout-preview${!preview && !analysisError ? ' preparing-preview' : ''}`} aria-busy={!preview && !analysisError}>
-          {preview ? <img src={preview.image} alt="Your actual drawing, automatically cut out and oriented for swimming" />
+          {preview ? <img src={preview.image} alt="Your actual drawing, automatically cut out and oriented for the aquarium" />
             : <div className="ai-status" role="status">
               {!analysisError && <span className="ai-spinner" aria-hidden="true" />}
-              <span>{analysisError ? 'Your fish needs another look.' : 'Finding the fish, keeping every little detail…'}</span>
+              <span>{analysisError ? 'Your drawing needs another look.' : 'Finding the drawing, keeping every little detail…'}</span>
             </div>}
           <span className="preview-caption">Original artwork. Not an AI-generated replacement.</span>
         </div>
@@ -72,14 +72,14 @@ export function PhotoEditor({ photo, token, demo, onDone, onCancel }: {
           }}>Try AI preparation again</button>
         </>}
         {preview && <>
-          <p className="field-hint">Check the preview before releasing. If AI missed a fin or included something extra, choose a clearer photo.</p>
+          <p className="field-hint">{preview.kind === 'plant' ? 'This plant will stay anchored on the seabed.' : preview.kind === 'submarine' ? 'This submarine will cruise through the water. Sharks leave it alone.' : 'This fish will swim through the reef.'} Check the preview; choose a clearer photo if part of the drawing is missing.</p>
           <label className="field-label" htmlFor="fish-name">What’s their name? <span>optional</span></label>
           <input id="fish-name" type="text" placeholder="e.g. Captain Bubbles" maxLength={40}
             value={name} disabled={busy} onChange={(event) => setName(event.target.value)} />
         </>}
         {submitError && <p className="error" role="alert">{submitError}</p>}
         <button className="button button-primary release-button" onClick={release} disabled={!preview || busy}>
-          {busy ? 'Swimming to the aquarium…' : 'Release into the reef'} <span aria-hidden="true">↗</span>
+          {busy ? 'Joining the aquarium…' : preview?.kind === 'plant' ? 'Plant on the seabed' : 'Release into the reef'} <span aria-hidden="true">↗</span>
         </button>
         <button className="text-button choose-again" onClick={onCancel} disabled={busy}>Choose a different photo</button>
         <p className="privacy-note">A resized photo is sent to OpenRouter and its AI provider for analysis. Only the approved cutout is saved in the aquarium.</p>

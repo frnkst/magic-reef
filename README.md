@@ -1,14 +1,15 @@
 # Magic Reef
 
 A small React + Three.js aquarium for children's drawings. Open the aquarium on
-a laptop, scan its QR code with a phone, photograph a fish, and release
+a laptop, scan its QR code with a phone, photograph a drawing, and release
 the actual drawing into the water.
 
 The MVP uses flat, transparent fish with subtle swimming deformation instead of
 3D fish models. This deliberately preserves each drawing's shape and colors.
-OpenRouter vision analysis automatically identifies the crop and head/tail
+Fish swim, submarines cruise, and underwater plants stay anchored on the seabed.
+OpenRouter vision analysis automatically identifies the subject type, crop, and head/tail
 direction. The app masks and rotates the original photo pixels; it never generates
-a replacement fish. There are no required coloring templates, paid 3D models, or tests.
+a replacement drawing. There are no required coloring templates, paid 3D models, or tests.
 
 ## Run locally
 
@@ -29,8 +30,9 @@ between a phone and laptop. The shared aquarium requires Supabase.
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the project's **SQL Editor**, paste all of `supabase/schema.sql`, and run
-   it once. Then run `supabase/ai.sql`. For an existing aquarium, run **only**
-   `supabase/ai.sql` to add the AI request budget.
+   it once. Then run `supabase/ai.sql` and `supabase/drawings.sql`.
+   For an existing aquarium, do not re-run `schema.sql`; run the other two
+   scripts to add the AI request budget and fish/submarine/plant support.
 3. In the project's API settings, find the project URL and **publishable** key
    (the legacy **anon** key also works). Put them in `.env.local`:
 
@@ -80,7 +82,7 @@ from another device. Both devices need network access to Supabase.
 
 `npm run dev` serves the same AI handler through Vite middleware, including local
 demo uploads. `npm run preview` serves only static files and cannot prepare new
-fish; use the development server or the deployed Vercel site for uploads.
+drawings; use the development server or the deployed Vercel site for uploads.
 
 The deployed demo does not allow paid AI requests without a valid shared room.
 The database limits shared rooms to 10 analysis attempts per 10 minutes and the
@@ -92,16 +94,17 @@ model/provider availability depends on those settings.
 
 ## Using it
 
-- Draw a fish on plain white paper. A dark, closed outline and bright colors
-  give the best cutout. Leave some paper around the fins.
+- Draw a fish, submarine, or underwater plant on plain white paper. A dark,
+  closed outline and bright colors give the best cutout. Leave paper around the drawing.
 - Take a well-lit photo from straight above. Avoid hands, table edges, and
   other drawings in the frame.
-- AI automatically locates the fish and rotates it for upright, horizontal swimming.
+- AI automatically identifies the subject and its orientation. Fish/submarines
+  become upright horizontal swimmers; plants remain vertical, rooted to the seabed.
   Adaptive, edge-connected paper removal creates the transparent cutout while
   preserving closed white details. No crop or direction controls.
-- Check the cutout preview and optionally give the fish a name. If the AI missed
+- Check the cutout preview and optionally give the drawing a name. If the AI missed
   part of the drawing, choose a clearer photo or explicitly retry preparation.
-- Release the fish. The laptop polls every three seconds and downloads only
+- Release the drawing. The laptop polls every three seconds and downloads only
   drawings it has not loaded before. Refreshing retains the aquarium.
 - Use **Full screen** for an unobstructed view. Escape exits browser fullscreen.
   Bookmark the aquarium URL; this browser also remembers the last created room.
@@ -109,36 +112,60 @@ model/provider availability depends on those settings.
 ## Printable coloring sheets
 
 Open **Print coloring sheets** on the homepage (or `/?view=coloring`).
-Six original vector fish have closed black outlines, large coloring areas, clear
-eyes, fins, and tails. Print all six on landscape A4, one fish per page, or save a
+Eleven original vector sheets (six fish, two submarines, and three plants) have
+closed black outlines, large coloring areas, and clear identifying features.
+Print them on landscape A4, one drawing per page, or save a
 PDF through the print dialog. Disable browser headers/footers and use 100% scale.
 Individual SVG downloads are also available under `public/coloring/`.
 
 Keep the surrounding paper white and the outline visible. Photograph a single
-colored sheet from above in good light, with all fins visible. The sheets are
+colored sheet from above in good light, with all fins, periscopes, or leaves visible. The sheets are
 designed to help recognition, not to guarantee it; always check the AI preview.
 
 The aquarium uses an original AI-generated reef illustration at
 `public/reef-background.jpg`, with an open-water center and no baked-in fish.
 The same background appears in the homepage preview and shared/demo aquariums;
-the drawings and bubbles are animated separately in Three.js.
+the drawings and bubbles are animated separately in Three.js. A small UV sway
+is masked to the side coral regions, leaving the open water, surface, and central
+sand steady. Coral sway is disabled with reduced-motion preferences; uploaded
+plant drawings remain stationary.
+
+## The playful shark
+
+A friendly shark circles the water and occasionally pursues a randomly chosen
+fish. After a brief gulp animation, the fish takes a **15-second break** and then
+swims back in. There is **no age protection**, so new fish can be chosen too.
+The first pursuit starts after 12–22 seconds; later pursuits are spaced randomly
+20–45 seconds apart. A small message explains when a fish leaves and returns.
+
+This is a local visual animation, not deletion: drawings remain in Supabase/local
+storage, and the fish count includes temporarily hidden fish. Each viewing screen
+has its own shark timing. Reloading shows all saved fish again. Animation time
+pauses while the tab is hidden; reduced-motion preferences slow the shark and
+remove its pitching and chomp stretch.
+
+Submarines and plants are never shark targets. Plants have stable positions
+derived from their drawing IDs and do not drift, flip, or wiggle. Submarines
+glide more gently than fish and keep their rigid hulls. Existing saved drawings
+without a subject type continue behaving as fish.
 
 ## MVP limits and privacy
 
-- Each aquarium accepts **40 uploaded drawings**. The local demo also has three
+- Each aquarium accepts **40 uploaded drawings total** across fish, submarines,
+  and plants. The local demo also has three
   original starter drawings.
 - Selecting a photo sends a resized JPEG (at most 1600 pixels on its longest side)
   through the Vercel function to **OpenRouter and its selected AI provider**.
   Do not photograph faces, names, or other personal details. Consult their
   data-processing policies before using children's artwork.
   Photos are not stored by this application's server, and photo data/API keys are
-  not logged. Only the approved PNG cutout, name, aspect ratio, and orientation
-  are stored in Supabase. Cutouts are at most 600 pixels on their longest side and 700 KB
+  not logged. Only the approved PNG cutout, name, aspect ratio, orientation,
+  and subject type are stored in Supabase. Cutouts are at most 600 pixels on their longest side and 700 KB
   including base64 encoding. The input photo limit is 25 MB.
 - Supabase's database stores the PNG data directly for simple MVP deployment.
   Full-size image storage, realtime subscriptions, and a management UI can be
   added later if needed.
-- **The aquarium link is its access key.** Anyone with it can view and add fish.
+- **The aquarium link is its access key.** Anyone with it can view and add drawings.
   Share it only with trusted people. There are no accounts or public room lists.
   Sharing an upload link also grants viewing access.
 - Data persists until the Supabase project owner removes it. There is no

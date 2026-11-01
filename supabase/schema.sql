@@ -77,11 +77,11 @@ language plpgsql security definer set search_path = ''
 as $$
 declare target_id uuid; new_id uuid;
 begin
-  -- Lock the tank so concurrent phone uploads cannot bypass the 40-fish limit.
+  -- Lock the tank so concurrent phone uploads cannot bypass the 40-drawing limit.
   select t.id into target_id from public.tanks t where t.token = tank_token for update;
   if target_id is null then raise exception 'Aquarium not found. Check your link.'; end if;
   if (select count(*) from public.fish f where f.tank_id = target_id) >= 40 then
-    raise exception 'This aquarium is full (40 fish).';
+    raise exception 'This aquarium is full (40 drawings).';
   end if;
   if fish_name is null or char_length(trim(fish_name)) not between 1 and 40
     or fish_image is null or octet_length(fish_image) > 700000
