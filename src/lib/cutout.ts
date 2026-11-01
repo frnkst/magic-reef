@@ -31,7 +31,7 @@ function makePhoto(image: HTMLImageElement) {
   return canvas;
 }
 
-export async function prepareFish(image: HTMLImageElement, token: string | null, demo: boolean): Promise<Omit<Fish, 'id' | 'name'>> {
+export async function prepareFish(image: HTMLImageElement, token: string | null, demo: boolean, interpretation = 0): Promise<Omit<Fish, 'id' | 'name'>> {
   const photo = makePhoto(image);
   const encoded = photo.toDataURL('image/jpeg', 0.85);
   if (encoded.length > 3_000_000) throw new Error('This photo is too detailed. Take a closer photo of just the drawing.');
@@ -40,8 +40,8 @@ export async function prepareFish(image: HTMLImageElement, token: string | null,
     response = await fetch('/api/analyze-fish', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: encoded, token, demo }),
-      signal: AbortSignal.timeout(55_000),
+      body: JSON.stringify({ image: encoded, token, demo, interpretation }),
+      signal: AbortSignal.timeout(115_000),
     });
   } catch (error) {
     if (error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
@@ -61,7 +61,17 @@ export async function prepareFish(image: HTMLImageElement, token: string | null,
       ? data.error : 'AI preparation failed. Please try again.';
     throw new Error(message);
   }
-  return extractDrawing(image, parseAnalysis(data));
+  if (interpretation === 0) return extractDrawing(image, parseAnalysis(data));
+  if (!data || typeof data !== 'object' || !('image' in data) || !('analysis' in data)
+    || typeof data.image !== 'string' || data.image.length > 4_000_000
+    || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(data.image)) {
+    throw new Error('AI returned an invalid edited image. Try again or select Keep my drawing.');
+  }
+  const edited = new Image();
+  edited.src = data.image;
+  try { await edited.decode(); }
+  catch { throw new Error('The AI-edited image could not be opened. Try again or select Keep my drawing.'); }
+  return extractDrawing(edited, parseAnalysis(data.analysis));
 }
 
 export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis): Omit<Fish, 'id' | 'name'> {
@@ -83,7 +93,15 @@ export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis):
     const y = point.y * height - center.y;
     return { x: x * Math.cos(angle) - y * Math.sin(angle), y: x * Math.sin(angle) + y * Math.cos(angle) };
   };
-  const points = analysis.outline.map(rotate);
+  // Vision models can hug the body too closely and miss small fins. Add a
+  // paper safety margin in photo pixels before rotating and removing paper.
+  const [topLeft, topRight, bottomRight] = analysis.outline;
+  const margin = Math.max((topRight.x - topLeft.x) * width, (bottomRight.y - topLeft.y) * height) * 0.1;
+  const left = Math.max(0, topLeft.x - margin / width);
+  const right = Math.min(1, topRight.x + margin / width);
+  const top = Math.max(0, topLeft.y - margin / height);
+  const bottom = Math.min(1, bottomRight.y + margin / height);
+  const points = [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }].map(rotate);
   const minX = Math.min(...points.map((point) => point.x));
   const minY = Math.min(...points.map((point) => point.y));
   const maxX = Math.max(...points.map((point) => point.x));
@@ -136,19 +154,52 @@ function removePaper(canvas: HTMLCanvasElement, context: CanvasRenderingContext2
   const { width, height } = canvas;
   const pixels = context.getImageData(0, 0, width, height);
   const data = pixels.data;
-  const brightness: number[] = [];
+  const paper: { brightness: number; red: number; blue: number }[] = [];
   for (let index = 0; index < width * height; index++) {
     const offset = index * 4;
     if (data[offset + 3] === 0) continue;
     const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
     const max = Math.max(data[offset], data[offset + 1], data[offset + 2]);
-    if (max - min < 40 && min > 140) brightness.push(min);
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const onEdge = x === 0 || y === 0 || x === width - 1 || y === height - 1
+      || data[(index - 1) * 4 + 3] === 0 || data[(index + 1) * 4 + 3] === 0
+      || data[(index - width) * 4 + 3] === 0 || data[(index + width) * 4 + 3] === 0;
+    if (onEdge && max - min < 40 && min > 65) {
+      paper.push({ brightness: min, red: data[offset] - data[offset + 1], blue: data[offset + 2] - data[offset + 1] });
+    }
   }
-  if (brightness.length === 0) {
+  if (paper.length < 8) {
     throw new Error('The drawing needs a plain, light paper background. Take a well-lit photo on white paper.');
   }
-  brightness.sort((a, b) => a - b);
-  const threshold = Math.max(145, brightness[Math.floor(brightness.length * 0.85)] - 65);
+  paper.sort((a, b) => a.brightness - b.brightness);
+  const background = paper[Math.floor(paper.length * 0.5)];
+  const threshold = Math.max(55, paper[Math.floor(paper.length * 0.1)].brightness - 25);
+  const isPaper = new Uint8Array(width * height);
+  const barrier = new Uint8Array(width * height);
+  for (let index = 0; index < width * height; index++) {
+    const offset = index * 4;
+    const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
+    const neutral = Math.abs(data[offset] - data[offset + 1] - background.red) < 22
+      && Math.abs(data[offset + 2] - data[offset + 1] - background.blue) < 22;
+    isPaper[index] = data[offset + 3] === 0 || (min >= threshold && neutral) ? 1 : 0;
+  }
+  // Seal small breaks in pencil/crayon outlines before flood filling. This mask
+  // only protects interiors; the saved colors still come from the original photo.
+  const radius = 6;
+  for (let index = 0; index < width * height; index++) {
+    if (isPaper[index]) continue;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (dx * dx + dy * dy > radius * radius) continue;
+        if (x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height) {
+          barrier[(y + dy) * width + x + dx] = 1;
+        }
+      }
+    }
+  }
   const visited = new Uint8Array(width * height);
   const queue = new Int32Array(width * height);
   let start = 0;
@@ -156,10 +207,7 @@ function removePaper(canvas: HTMLCanvasElement, context: CanvasRenderingContext2
   const enqueue = (index: number) => {
     if (visited[index]) return;
     visited[index] = 1;
-    const offset = index * 4;
-    const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
-    const max = Math.max(data[offset], data[offset + 1], data[offset + 2]);
-    if (data[offset + 3] === 0 || (min >= threshold && max - min < 45)) queue[end++] = index;
+    if (isPaper[index] && !barrier[index]) queue[end++] = index;
   };
   for (let x = 0; x < width; x++) {
     enqueue(x);
@@ -179,6 +227,27 @@ function removePaper(canvas: HTMLCanvasElement, context: CanvasRenderingContext2
     if (x < width - 1) enqueue(index + 1);
     if (y > 0) enqueue(index - width);
     if (y < height - 1) enqueue(index + width);
+  }
+  barrier.fill(0);
+  for (let index = 0; index < end; index++) barrier[queue[index]] = 1;
+  // Remove the thin paper margin introduced by the protective mask without
+  // erasing ink or letting the flood escape into enclosed pale coloring.
+  for (let index = 0; index < width * height; index++) {
+    if (!isPaper[index] || barrier[index]) continue;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    let outside = false;
+    for (let dy = -radius; dy <= radius && !outside; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (dx * dx + dy * dy > radius * radius) continue;
+        if (x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height
+          && barrier[(y + dy) * width + x + dx]) {
+          outside = true;
+          break;
+        }
+      }
+    }
+    if (outside) data[index * 4 + 3] = 0;
   }
   let visible = 0;
   for (let index = 3; index < data.length; index += 4) if (data[index] > 0) visible++;

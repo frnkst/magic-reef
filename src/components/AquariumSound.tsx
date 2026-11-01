@@ -4,7 +4,6 @@ import { errorMessage } from '../lib/reef';
 interface SoundSession {
   context: AudioContext;
   noise: AudioBufferSourceNode;
-  timer: number;
 }
 
 export function AquariumSound() {
@@ -17,7 +16,6 @@ export function AquariumSound() {
     return () => {
       const sound = session.current;
       if (!sound) return;
-      window.clearInterval(sound.timer);
       sound.noise.stop();
       void sound.context.close().catch((cause: unknown) => {
         console.error('Could not close aquarium audio:', cause);
@@ -51,38 +49,32 @@ export function AquariumSound() {
         const output = context.createGain();
         output.gain.value = 0.55;
         output.connect(context.destination);
-        const buffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+        const buffer = context.createBuffer(1, context.sampleRate * 12, context.sampleRate);
         const samples = buffer.getChannelData(0);
-        for (let index = 0; index < samples.length; index++) samples[index] = Math.random() * 2 - 1;
+        let flow = 0;
+        let ripple = 0;
+        for (let index = 0; index < samples.length; index++) {
+          const white = Math.random() * 2 - 1;
+          flow = (flow + white * 0.02) / 1.02;
+          ripple = ripple * 0.99995 + Math.random() * 0.0001;
+          samples[index] = (flow * 3.5 + white * 0.12) * (0.65 + ripple * 0.35);
+        }
         const noise = context.createBufferSource();
         noise.buffer = buffer;
         noise.loop = true;
         const filter = context.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.value = 450;
-        const airflow = context.createGain();
-        airflow.gain.value = 0.14;
-        noise.connect(filter).connect(airflow).connect(output);
+        filter.frequency.value = 1800;
+        filter.Q.value = 0.5;
+        const lowCut = context.createBiquadFilter();
+        lowCut.type = 'highpass';
+        lowCut.frequency.value = 160;
+        lowCut.Q.value = 0.5;
+        const water = context.createGain();
+        water.gain.value = 0.3;
+        noise.connect(lowCut).connect(filter).connect(water).connect(output);
         noise.start();
-        const bubble = () => {
-          if (context.state !== 'running' || document.hidden || Math.random() < 0.35) return;
-          const oscillator = context.createOscillator();
-          const volume = context.createGain();
-          const now = context.currentTime;
-          const duration = 0.15 + Math.random() * 0.18;
-          const frequency = 180 + Math.random() * 450;
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(frequency, now);
-          oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.55, now + duration);
-          volume.gain.setValueAtTime(0.0001, now);
-          volume.gain.exponentialRampToValueAtTime(0.04 + Math.random() * 0.04, now + 0.012);
-          volume.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-          oscillator.connect(volume).connect(output);
-          oscillator.onended = () => { oscillator.disconnect(); volume.disconnect(); };
-          oscillator.start(now);
-          oscillator.stop(now + duration + 0.02);
-        };
-        session.current = { context, noise, timer: window.setInterval(bubble, 220) };
+        session.current = { context, noise };
       }
       const context = session.current.context;
       if (enabled) await context.suspend();

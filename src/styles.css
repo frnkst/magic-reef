@@ -151,6 +151,15 @@ h1 em, h2 em { font-weight: 500; font-style: normal; }
 .ai-editor .cutout-preview { height: 280px; }
 .ai-editor .release-button { margin-top: 24px; }
 .ai-editor .privacy-note { margin-top: 20px; color: #8d947e; font-size: 10px; line-height: 1.7; }
+.interpretation-control { margin-bottom: 20px; padding: 16px 18px; background: #e7eddf; border: 1px solid #d5dbc9; border-radius: 12px; }
+.interpretation-control .field-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
+.interpretation-control .field-label span { color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.interpretation-control input[type="range"] { width: 100%; margin: 0; accent-color: #326b65; cursor: pointer; min-height: 28px; }
+.interpretation-control input:disabled { cursor: wait; opacity: .55; }
+.interpretation-control input:focus-visible { outline: 2px solid #326b65; outline-offset: 4px; border-radius: 4px; }
+.interpretation-labels { display: flex; justify-content: space-between; gap: 15px; font-size: 10px; color: #42635d; }
+.interpretation-control .field-hint { color: #596f61; }
+.interpretation-apply { width: 100%; margin-top: 10px; }
 .ai-status { display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; color: #ccdcca; font-size: 12px; line-height: 1.7; }
 .ai-spinner { width: 30px; height: 30px; border: 2px solid #ccdcca33; border-top-color: #f2c778; border-radius: 50%; animation: finding-fins 1.2s linear infinite; }
 @keyframes finding-fins { to { transform: rotate(360deg); } }

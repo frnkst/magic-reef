@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const handler = createAnalysisHandler({
     key: env.OPENROUTER_API_KEY,
     model: env.OPENROUTER_MODEL,
+    imageModel: env.OPENROUTER_IMAGE_MODEL,
     supabaseUrl: env.VITE_SUPABASE_URL,
     supabaseKey: env.VITE_SUPABASE_PUBLISHABLE_KEY,
     allowDemo: true,

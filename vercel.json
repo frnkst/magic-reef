@@ -2,7 +2,7 @@
   "framework": "vite",
   "functions": {
     "api/analyze-fish.ts": {
-      "maxDuration": 60,
+      "maxDuration": 120,
       "includeFiles": "src/lib/analysis.ts"
     }
   },

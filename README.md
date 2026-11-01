@@ -22,8 +22,10 @@ The MVP uses flat, transparent fish with subtle swimming deformation instead of
 3D fish models. This deliberately preserves each drawing's shape and colors.
 Fish swim, submarines cruise, and underwater plants stay anchored on the seabed.
 OpenRouter vision analysis automatically identifies the subject type, crop, and head/tail
-direction. The app masks and rotates the original photo pixels; it never generates
-a replacement drawing. There are no required coloring templates, paid 3D models, or tests.
+direction. At **0% AI interpretation**, the app masks and rotates the original photo
+pixels without redrawing or recoloring them. An optional slider lets AI repair gaps,
+complete coloring, or interpret the artwork more freely, always with approval before
+saving. There are no required coloring templates, paid 3D models, or tests.
 
 ## Run locally
 
@@ -92,7 +94,11 @@ from another device. Both devices need network access to Supabase.
    it must stay on the server.
 3. Optionally set `OPENROUTER_MODEL` (default: `google/gemini-2.5-flash`). The model
    must support image input and structured JSON-schema output.
-4. Run `supabase/ai.sql` if using a shared aquarium, then restart/redeploy.
+4. Optionally set `OPENROUTER_IMAGE_MODEL` (default:
+   `google/gemini-2.5-flash-image`) for the interpretation slider. It must support
+   reference-image input and image output through chat completions. At 0%, this
+   model is not called; the original pixels are used.
+5. Run `supabase/ai.sql` if using a shared aquarium, then restart/redeploy.
 
 `npm run dev` serves the same AI handler through Vite middleware, including local
 demo uploads. `npm run preview` serves only static files and cannot prepare new
@@ -101,7 +107,9 @@ drawings; use the development server or the deployed Vercel site for uploads.
 The deployed demo does not allow paid AI requests without a valid shared room.
 The database limits shared rooms to 10 analysis attempts per 10 minutes and the
 deployment to 200 per rolling day, with concurrent-safe reservations. Failed
-attempts also count. These are basic MVP spending safeguards, not a substitute for
+attempts also count. Each preview update above 0% makes an image-editing call plus
+a vision-analysis call; it counts as one preparation attempt. Slider movement alone
+does not make requests; press **Update preview** to apply it. These are basic MVP spending safeguards, not a substitute for
 setting a credit limit on the OpenRouter key and Vercel abuse/firewall controls.
 The service requests providers that do not collect data (`data_collection: deny`);
 model/provider availability depends on those settings.
@@ -114,8 +122,15 @@ model/provider availability depends on those settings.
   other drawings in the frame.
 - AI automatically identifies the subject and its orientation. Fish/submarines
   become upright horizontal swimmers; plants remain vertical, rooted to the seabed.
-  Adaptive, edge-connected paper removal creates the transparent cutout while
+  Edge-sampled, shadow-aware paper removal creates the transparent cutout while
   preserving closed white details. No crop or direction controls.
+- Use the **Keep my drawing / Let AI fill it in** slider to choose how much help
+  to allow. **0%** preserves original colors, marks, and blank areas. Low settings
+  ask for small repairs; higher settings ask AI to fill and interpret more freely.
+  The percentage is creative guidance, not an exact pixel-blending strength.
+  Press **Update preview** after changing it; release is disabled until the
+  preview matches the selected setting. Returning to 0% reuses the original
+  preview rather than editing an already generated image.
 - Check the cutout preview and optionally give the drawing a name. If the AI missed
   part of the drawing, choose a clearer photo or explicitly retry preparation.
 - Release the drawing. The laptop polls every three seconds and downloads only
@@ -125,8 +140,8 @@ model/provider availability depends on those settings.
   storage. Go back to the homepage and select **Open your aquarium** to reopen
   the latest room. This is browser-specific; clearing site data or leaving a private
   browsing session removes the saved link. Bookmark the URL as a backup.
-- Select **Sound off** in the aquarium toolbar to enable soft bubbling and
-  airflow sounds. Select **Sound on** to mute. Audio is generated locally with
+- Select **Sound off** in the aquarium toolbar to enable soft aquarium water-flow
+  sound, without pitched bubble tones. Select **Sound on** to mute. Audio is generated locally with
   Web Audio, starts only after your click, and pauses while the tab is hidden.
 
 ## Printable coloring sheets
@@ -176,7 +191,8 @@ without a subject type continue behaving as fish.
   and plants. The local demo also has three
   original starter drawings.
 - Selecting a photo sends a resized JPEG (at most 1600 pixels on its longest side)
-  through the Vercel function to **OpenRouter and its selected AI provider**.
+  through the Vercel function to **OpenRouter and its selected AI provider** for
+  analysis and, when interpretation is above 0%, image editing.
   Do not photograph faces, names, or other personal details. Consult their
   data-processing policies before using children's artwork.
   Photos are not stored by this application's server, and photo data/API keys are
@@ -199,8 +215,10 @@ without a subject type continue behaving as fish.
 - AI crop detection and automatic paper removal are approximate, not a
   pixel-perfect segmentation model. Use plain, light paper and a closed dark outline.
   Strong shadows, perspective, crowded photos, or unusual drawings can yield
-  imperfect cutouts; the preview is authoritative. AI does not redraw or recolor
-  the fish, and white interiors are preserved. JPEG and PNG are the most portable inputs; unsupported
+  imperfect cutouts; the preview is authoritative. At 0%, AI does not redraw or
+  recolor the fish, and closed white interiors are preserved. Higher interpretation
+  settings can change the artwork or invent details; check the preview carefully.
+  Existing saved fish are not automatically reprocessed. JPEG and PNG are the most portable inputs; unsupported
   phone formats show an error rather than uploading a broken fish.
 - Requires a WebGL-capable browser. Fish are readable 2D artwork moving in a
   Three.js scene, not anatomically modeled 3D animals.
