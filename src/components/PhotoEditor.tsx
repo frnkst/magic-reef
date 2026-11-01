@@ -63,7 +63,7 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
     <div className="photo-editor ai-editor">
       <div className="editor-heading">
         <span className="eyebrow">02 / A little AI magic</span>
-        <h1>{preview ? `Meet your new ${preview.kind ?? 'fish'}.` : 'Finding the little details.'}</h1>
+        <h1>{preview ? `Meet your new ${preview.movement === 'walk' ? 'crab' : preview.kind ?? 'fish'}.` : 'Finding the little details.'}</h1>
         <p>Keep their artwork just as it is, or give AI a little room to fill in the blanks. You always approve the result first.</p>
       </div>
       <section className="fish-options" aria-label="Automatically prepared drawing">
@@ -105,7 +105,7 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
           }}>Try AI preparation again</button>
         </>}
         {preview && <>
-          <p className="field-hint">{preview.kind === 'plant' ? 'This plant will stay anchored on the seabed.' : preview.kind === 'submarine' ? 'This submarine will cruise through the water. Sharks leave it alone.' : 'This fish will swim through the reef.'} Check the preview; choose a clearer photo if part of the drawing is missing.</p>
+          <p className="field-hint">{preview.movement === 'walk' ? 'This crab will scuttle sideways along the seabed. The shark and hook leave it alone.' : preview.kind === 'plant' ? 'This plant will stay anchored on the seabed.' : preview.kind === 'submarine' ? 'This submarine will cruise through the water. Sharks leave it alone.' : 'This fish will swim through the reef.'} Check the preview; choose a clearer photo if part of the drawing is missing.</p>
           <fieldset className="drawing-size" disabled={busy}>
             <legend className="field-label">How big in the reef?</legend>
             <div className="size-choices">

@@ -255,6 +255,7 @@ export function App() {
   const displayed = childFilter ? allDrawings.filter((drawing) => drawing.child?.trim().toLocaleLowerCase() === childFilter.trim().toLocaleLowerCase()) : allDrawings;
   const submarineCount = displayed.filter((drawing) => drawing.kind === 'submarine').length;
   const plantCount = displayed.filter((drawing) => drawing.kind === 'plant').length;
+  const crabCount = displayed.filter((drawing) => drawing.movement === 'walk').length;
   return <main className={`tank-page${immersive ? ' immersive' : ''}`}>
     <Aquarium fish={displayed} onError={graphicsFailure} />
     <header className="tank-header">
@@ -311,7 +312,7 @@ export function App() {
     {!demo && synced && displayed.length === 0 && <div className="empty-reef"><span className="little-star" aria-hidden="true">✳</span><h2>{childFilter ? <>No drawings for<br />{childFilter} yet.</> : <>Every ocean starts<br />with one little fish.</>}</h2><p>{childFilter ? 'Choose Everyone’s reef to see the party aquarium.' : 'The owner can add the first little masterpiece.'}</p></div>}
     <footer className="tank-footer">
       <span className="tank-status"><span className={`status-dot${!synced ? ' status-pending' : ''}`} />{demo ? 'Local demo · this browser only' : synced ? 'Connected · waiting for little masterpieces' : 'Reconnecting…'}</span>
-      <span>{childFilter && `${childFilter} · `}{displayed.length - submarineCount - plantCount} fish · {submarineCount} submarine{submarineCount === 1 ? '' : 's'} · {plantCount} plant{plantCount === 1 ? '' : 's'}</span>
+      <span>{childFilter && `${childFilter} · `}{displayed.length - submarineCount - plantCount - crabCount} fish{crabCount > 0 && ` · ${crabCount} crab${crabCount === 1 ? '' : 's'}`} · {submarineCount} submarine{submarineCount === 1 ? '' : 's'} · {plantCount} plant{plantCount === 1 ? '' : 's'}</span>
     </footer>
     {(syncError || graphicsError || startError || owner.error) && <div className="tank-errors" role="alert">
       {syncError && <p>{syncError} Retrying every few seconds.</p>}

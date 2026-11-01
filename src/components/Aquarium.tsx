@@ -174,6 +174,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         if (swimmer.fish.kind === 'plant') {
           const position = plantPosition(swimmer.fish.id, current.width, swimmer.height, swimmer.fish.aspect, fit);
           swimmer.mesh.position.set(position.x, position.y, -0.5);
+        } else if (swimmer.fish.movement === 'walk') {
+          swimmer.mesh.position.y = -4.55 + swimmer.height * fit / 2;
         }
       }
     };
@@ -343,7 +345,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           fishingRig.position.y = fishingDepth;
           if (fishingWillCatch && !fishingTargetId && elapsed - fishingPhaseAt > 2) {
             const candidates = [...current.swimmers.values()].filter((swimmer) =>
-              (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.eatenAt === null && swimmer.fish.id !== targetId);
+              (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.fish.movement !== 'walk' && swimmer.eatenAt === null && swimmer.fish.id !== targetId);
             const choice = candidates[Math.floor(Math.random() * candidates.length)];
             if (choice) fishingTargetId = choice.fish.id;
           }
@@ -373,6 +375,20 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           mesh.scale.set(fit, fit, 1);
           mesh.rotation.z = 0;
           mesh.material.uniforms.time.value = 0;
+          continue;
+        }
+        if (drawing.movement === 'walk') {
+          const walking = (elapsed + swimmer.phase) % 7 < 5;
+          const bound = Math.max(0.1, current.width / 2 - height * drawing.aspect * fit / 2 - 0.12);
+          if (walking) mesh.position.x += delta * swimmer.speed * swimmer.direction * (reducedMotion.matches ? 0.3 : 1);
+          if (mesh.position.x >= bound) { mesh.position.x = bound; swimmer.direction = -1; }
+          else if (mesh.position.x <= -bound) { mesh.position.x = -bound; swimmer.direction = 1; }
+          mesh.position.y = -4.55 + height * fit / 2;
+          mesh.position.z = -0.2;
+          mesh.scale.set(fit, fit, 1);
+          mesh.rotation.z = 0;
+          mesh.material.uniforms.time.value = walking && !reducedMotion.matches ? elapsed : 0;
+          mesh.material.uniforms.opacity.value = 1;
           continue;
         }
         let appearance = 1;
@@ -456,7 +472,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           nextHuntAt = elapsed + 5;
         }
         if (!targetId && elapsed >= nextHuntAt) {
-          const candidates = [...current.swimmers.values()].filter((swimmer) => (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.eatenAt === null && swimmer.fish.id !== fishingTargetId);
+          const candidates = [...current.swimmers.values()].filter((swimmer) => (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.fish.movement !== 'walk' && swimmer.eatenAt === null && swimmer.fish.id !== fishingTargetId);
           const choice = candidates[Math.floor(Math.random() * candidates.length)];
           if (choice) {
             target = choice;
@@ -552,7 +568,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     if (!current) return;
     const wanted = new Map(fish.map((drawing) => [drawing.id, drawing]));
     for (const [id, swimmer] of current.swimmers) {
-      if (!wanted.has(id) || (wanted.get(id)?.size ?? 'medium') !== (swimmer.fish.size ?? 'medium')) {
+      if (!wanted.has(id) || (wanted.get(id)?.size ?? 'medium') !== (swimmer.fish.size ?? 'medium')
+        || (wanted.get(id)?.movement ?? 'swim') !== (swimmer.fish.movement ?? 'swim')) {
         current.scene.remove(swimmer.mesh);
         swimmer.mesh.geometry.dispose();
         swimmer.mesh.material.dispose();
@@ -581,7 +598,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             phase: { value: index * 1.73 },
             headRight: { value: drawing.facing === 'right' ? 1 : 0 },
             opacity: { value: 1 },
-            wiggle: { value: kind === 'fish' ? 1 : 0 },
+            wiggle: { value: kind === 'fish' && drawing.movement !== 'walk' ? 1 : 0 },
+            walking: { value: drawing.movement === 'walk' ? 1 : 0 },
           },
           vertexShader: `
             varying vec2 vUv;
@@ -589,11 +607,14 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             uniform float phase;
             uniform float headRight;
             uniform float wiggle;
+            uniform float walking;
             void main() {
               vUv = uv;
               vec3 p = position;
               float tail = mix(uv.x, 1.0 - uv.x, headRight);
               p.y += sin(time * 4.0 + tail * 5.0 + phase) * 0.035 * tail * tail * wiggle;
+              float legs = 1.0 - smoothstep(0.0, 0.55, uv.y);
+              p.x += sin(time * 9.0 + uv.x * 12.0 + phase) * legs * 0.045 * walking * step(0.001, time);
               gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
             }
           `,
@@ -622,6 +643,10 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         if (kind === 'plant') {
           const position = plantPosition(drawing.id, current.width, height, drawing.aspect, fit);
           mesh.position.set(position.x, position.y, -0.5);
+          mesh.scale.set(fit, fit, 1);
+        } else if (drawing.movement === 'walk') {
+          mesh.position.y = -4.55 + height * fit / 2;
+          mesh.position.z = -0.2;
           mesh.scale.set(fit, fit, 1);
         }
         current.scene.add(mesh);

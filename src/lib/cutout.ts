@@ -149,7 +149,7 @@ export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis):
     result = canvas.toDataURL('image/png');
   }
   if (result.length > 700_000) throw new Error('The cutout is too large to save. Try a better-lit photo.');
-  return { image: result, aspect: canvas.width / canvas.height, facing, kind: analysis.kind };
+  return { image: result, aspect: canvas.width / canvas.height, facing, kind: analysis.kind, movement: analysis.movement };
 }
 
 function removePaper(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {

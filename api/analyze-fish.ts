@@ -147,8 +147,7 @@ export function createAnalysisHandler(settings: Settings) {
           messages: [
             {
               role: 'system',
-              // Sea creatures share swimmer behavior while keeping their natural upright silhouette.
-              content: 'Crabs, seahorses, and octopuses are supported sea creatures: classify them as kind=fish, not unsupported subjects. For these creatures, use left/right body landmarks as tail/head with back above them to preserve their natural upright appearance, even though these are not literal anatomical head/tail points. Include all limbs and curled tails. Follow this rule in preference to fish-specific anatomical landmarks.',
+              content: 'Crabs, seahorses, and octopuses are supported sea creatures: classify them as kind=fish, not unsupported subjects. Set movement=walk for crabs, and movement=swim for all other subjects. Crabs walk sideways on the seabed, never float. For these creatures, use left/right body landmarks as tail/head with back above them to preserve their natural upright appearance, even though these are not literal anatomical head/tail points. Include all limbs and curled tails. Follow this rule in preference to fish-specific anatomical landmarks.',
             },
             {
               role: 'system',

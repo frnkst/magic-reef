@@ -14,6 +14,7 @@ export interface FishAnalysis {
   tail: Point;
   back: Point;
   kind: DrawingKind;
+  movement: 'swim' | 'walk';
 }
 
 const pointSchema = {
@@ -31,6 +32,7 @@ export const analysisSchema = {
   properties: {
     found: { type: 'boolean', description: 'True if one complete sea creature (including fish, crab, seahorse, or octopus), submarine, or underwater plant drawing can be identified.' },
     kind: { type: 'string', enum: ['fish', 'submarine', 'plant'], description: 'The actual subject: fish means any sea creature, including crab, seahorse, or octopus; otherwise submarine or stationary underwater plant.' },
+    movement: { type: 'string', enum: ['swim', 'walk'], description: 'Crabs must use walk so they stay on the seabed. Use swim for every other subject; plants remain stationary based on kind.' },
     confidence: { type: 'number', description: 'Confidence from 0 to 1 in the contour and landmarks.' },
     reason: { type: 'string', description: 'Brief explanation, or actionable photography advice if no supported drawing is found.' },
     outline: {
@@ -42,7 +44,7 @@ export const analysisSchema = {
     tail: { ...pointSchema, description: 'Fish: center of tail end; submarine: back/stern at the propeller; plant: center of base or roots.' },
     back: { ...pointSchema, description: 'Fish: dorsal/top side; submarine: top of hull/periscope; plant: a leaf or branch on the right side when upright.' },
   },
-  required: ['found', 'kind', 'confidence', 'reason', 'outline', 'head', 'tail', 'back'],
+  required: ['found', 'kind', 'movement', 'confidence', 'reason', 'outline', 'head', 'tail', 'back'],
   additionalProperties: false,
 };
 
@@ -62,7 +64,9 @@ export function parseAnalysis(value: unknown): FishAnalysis {
     || !Array.isArray(result.outline) || result.outline.length > 160
     || !result.outline.every(isPoint)
     || !isPoint(result.head) || !isPoint(result.tail) || !isPoint(result.back)
-    || (result.kind !== 'fish' && result.kind !== 'submarine' && result.kind !== 'plant')) {
+    || (result.kind !== 'fish' && result.kind !== 'submarine' && result.kind !== 'plant')
+    || (result.movement !== undefined && result.movement !== 'swim' && result.movement !== 'walk')
+    || (result.movement === 'walk' && result.kind !== 'fish')) {
     throw new Error('AI returned an invalid drawing crop. Try another photo.');
   }
   if (!result.found) throw new Error(`AI could not find one complete drawing. ${result.reason.trim() || 'Photograph a single fish, submarine, or plant clearly from above.'}`);
@@ -102,5 +106,6 @@ export function parseAnalysis(value: unknown): FishAnalysis {
   return {
     found: result.found, confidence: result.confidence, reason: result.reason,
     outline, head: result.head, tail: result.tail, back: result.back, kind: result.kind,
+    movement: result.movement === 'walk' ? 'walk' : 'swim',
   };
 }

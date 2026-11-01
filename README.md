@@ -48,9 +48,9 @@ between a phone and laptop. The shared aquarium requires Supabase.
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the project's **SQL Editor**, paste all of `supabase/schema.sql`, and run
    it once. Then run `supabase/ai.sql`, `supabase/drawings.sql`, and
-   `supabase/party.sql` and `supabase/sizes.sql` in that order.
+   `supabase/party.sql`, `supabase/sizes.sql`, and `supabase/movement.sql` in that order.
    For an existing aquarium, do not re-run `schema.sql`; run the other two
-   scripts, `party.sql`, and `sizes.sql` to add the AI request budget, drawing types,
+   scripts, `party.sql`, `sizes.sql`, and `movement.sql` to add the AI request budget, drawing types,
    child names, sizes, and owner-only write permissions.
 3. In the project's API settings, find the project URL and **publishable** key
    (the legacy **anon** key also works). Put them in `.env.local`:
@@ -226,6 +226,13 @@ on another device keeps that variation; submarines and plants keep their chosen 
 The same saved size is shown on every viewing screen, with responsive fitting
 to keep drawings inside narrow aquariums. Size does not redraw the artwork or
 make another AI request. Plants remain rooted to the seabed at every size.
+
+Crabs are identified during photo preparation and saved as floor walkers.
+They scuttle sideways along the seabed, pause occasionally, and gently move
+their legs without floating, tilting, or flipping their artwork. Both the
+shark and fishing hook ignore them. Reduced motion disables leg deformation
+and slows walking. Older drawings saved before crab recognition retain their
+existing behavior; re-upload an old crab to give it the walking classification.
 
 ## The playful shark
 

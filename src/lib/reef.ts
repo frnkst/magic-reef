@@ -3,6 +3,7 @@ import { ownerRequest } from './auth';
 
 export type DrawingKind = 'fish' | 'submarine' | 'plant';
 export type DrawingSize = 'small' | 'medium' | 'large';
+export type DrawingMovement = 'swim' | 'walk';
 
 export interface Fish {
   id: string;
@@ -13,6 +14,7 @@ export interface Fish {
   kind?: DrawingKind;
   child?: string;
   size?: DrawingSize;
+  movement?: DrawingMovement;
 }
 
 interface FishSummary {
@@ -23,6 +25,7 @@ interface FishSummary {
   kind: DrawingKind;
   child: string;
   size: DrawingSize;
+  movement: DrawingMovement;
 }
 
 const url = import.meta.env.VITE_SUPABASE_URL;
@@ -61,7 +64,8 @@ function isFish(value: unknown): value is Fish {
     && (fish.facing === 'left' || fish.facing === 'right')
     && (fish.kind === undefined || fish.kind === 'fish' || fish.kind === 'submarine' || fish.kind === 'plant')
     && (fish.child === undefined || (typeof fish.child === 'string' && fish.child.length <= 40))
-    && (fish.size === undefined || fish.size === 'small' || fish.size === 'medium' || fish.size === 'large');
+    && (fish.size === undefined || fish.size === 'small' || fish.size === 'medium' || fish.size === 'large')
+    && (fish.movement === undefined || fish.movement === 'swim' || fish.movement === 'walk');
 }
 
 export async function createTank(): Promise<string> {
@@ -75,7 +79,7 @@ export async function createTank(): Promise<string> {
 
 export async function loadFish(token: string, previous: Fish[]): Promise<Fish[]> {
   if (!client) throw new Error('Supabase is not configured. Add the environment variables and redeploy.');
-  const { data, error } = await client.rpc('list_sized_drawings', { tank_token: token });
+  const { data, error } = await client.rpc('list_reef_drawings', { tank_token: token });
   if (error) throw new Error(`Could not sync the aquarium: ${error.message}`);
   if (!Array.isArray(data) || !data.every((entry: unknown) => {
     if (!entry || typeof entry !== 'object') return false;
@@ -85,13 +89,14 @@ export async function loadFish(token: string, previous: Fish[]): Promise<Fish[]>
       && (value.facing === 'left' || value.facing === 'right')
       && (value.kind === 'fish' || value.kind === 'submarine' || value.kind === 'plant')
       && typeof value.child === 'string' && value.child.length <= 40
-      && (value.size === 'small' || value.size === 'medium' || value.size === 'large');
+      && (value.size === 'small' || value.size === 'medium' || value.size === 'large')
+      && (value.movement === 'swim' || value.movement === 'walk');
   })) throw new Error('The server returned an invalid drawing list.');
   const summaries = data as FishSummary[];
   const known = new Map(previous.map((fish) => [fish.id, fish]));
   return Promise.all(summaries.map(async (summary) => {
     const existing = known.get(summary.id);
-    if (existing) return { ...existing, kind: summary.kind, child: summary.child, size: summary.size };
+    if (existing) return { ...existing, kind: summary.kind, child: summary.child, size: summary.size, movement: summary.movement };
     const result = await client.rpc('get_fish_image', { tank_token: token, fish_id: summary.id });
     if (result.error) throw new Error(`Could not load ${summary.name}: ${result.error.message}`);
     const fish = { ...summary, image: result.data };
@@ -118,6 +123,7 @@ export async function releaseFish(token: string | null, fish: Omit<Fish, 'id'>, 
   const result = await ownerRequest('/api/drawings', {
     token, name: fish.name, image: fish.image, aspect: fish.aspect,
     facing: fish.facing, kind: fish.kind ?? 'fish', childName: fish.child ?? '', size: fish.size ?? 'medium',
+    movement: fish.movement ?? 'swim',
   });
   if (!result || typeof result !== 'object' || !('saved' in result) || result.saved !== true) {
     throw new Error('The server did not confirm the drawing was saved.');
