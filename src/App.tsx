@@ -258,13 +258,13 @@ export function App() {
   const crabCount = displayed.filter((drawing) => drawing.movement === 'walk').length;
   return <main className={`tank-page${immersive ? ' immersive' : ''}`}>
     <Aquarium fish={displayed} onError={graphicsFailure} />
-    {owner.allowed && <header className="tank-header">
-      <Logo light />
+    <header className={`tank-header${owner.allowed ? '' : ' viewer-header'}`}>
+      {owner.allowed && <Logo light />}
       <div className="tank-tools">
         <button className="glass-button" aria-expanded={invite} aria-controls="reef-controls" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide controls' : 'Reef controls'} <span aria-hidden="true">↗</span></button>
       </div>
-    </header>}
-    <aside id="reef-controls" className={`invite-card reef-controls${owner.allowed ? invite ? '' : ' controls-hidden' : ' viewer-controls'}`} aria-label="Aquarium controls" inert={owner.allowed && !invite}>
+    </header>
+    <aside id="reef-controls" className={`invite-card reef-controls${owner.allowed ? '' : ' viewer-controls'}${invite ? '' : ' controls-hidden'}`} aria-label="Aquarium controls" inert={!invite}>
       {owner.allowed && <>
         <div className="controls-heading"><span className="eyebrow">Your little ocean</span><button className="text-button" aria-label="Close aquarium controls" onClick={() => setInvite(false)}>Close ×</button></div>
         <h1>Reef <em>station.</em></h1>
