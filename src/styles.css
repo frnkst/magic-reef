@@ -64,19 +64,17 @@ h1 em, h2 em { font-weight: 400; }
 .scribble { font-size: 37px; color: #b6b99e; line-height: 1; }
 .landing-reef { position: relative; overflow: hidden; border-radius: 140px 7px 7px 7px; isolation: isolate; }
 .aquarium { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 50% -25%, #58978f 0, transparent 68%), linear-gradient(180deg, #174f58 0%, #0b3b46 48%, #072d37 100%); }
+.reef-background { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.aquarium::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, #002a3b40, transparent 23%, transparent 77%, #002a3b38); pointer-events: none; }
 .three-scene { position: absolute; inset: 0; z-index: 2; }
 .three-scene canvas { display: block; width: 100%; height: 100%; }
-.water-light { position: absolute; top: -25%; height: 110%; width: 23%; background: linear-gradient(180deg, #c9e8c314, #b6e6d000); filter: blur(12px); transform: rotate(23deg); pointer-events: none; }
-.water-light-one { left: 22%; }
-.water-light-two { left: 62%; width: 9%; opacity: .7; }
-.seabed { position: absolute; bottom: 0; width: 100%; height: 28%; }
-.preview-topline { position: absolute; top: 33px; left: 75px; right: 29px; z-index: 3; display: flex; align-items: center; gap: 8px; font-size: 10px; color: #d6e5d9b3; }
+.preview-topline { position: absolute; top: 33px; left: 75px; right: 29px; z-index: 3; display: flex; align-items: center; gap: 8px; font-size: 10px; color: #f1f6e8; text-shadow: 0 1px 5px #002a3b; }
 .preview-topline > span:last-child { margin-left: auto; font-size: 9px; letter-spacing: .14em; }
 .status-dot { display: inline-block; height: 6px; width: 6px; border-radius: 50%; background: #b3d3a9; flex-shrink: 0; box-shadow: 0 0 10px #b3d3a92b; }
 .status-pending { background: #f2c778; }
-.reef-note { position: absolute; top: 29%; right: 8%; font-family: var(--serif); font-size: clamp(17px, 1.75vw, 26px); color: #c0d3c799; line-height: 1.45; transform: rotate(-7deg); z-index: 3; pointer-events: none; }
+.reef-note { position: absolute; top: 29%; right: 8%; font-family: var(--serif); font-size: clamp(17px, 1.75vw, 26px); color: #e4efe0bf; line-height: 1.45; transform: rotate(-7deg); z-index: 3; pointer-events: none; text-shadow: 0 1px 8px #003f59; }
 .reef-note em { font-size: .78em; }
-.preview-bottomline { position: absolute; bottom: 28px; left: 32px; color: #c8ddd17a; font-size: 9px; letter-spacing: .22em; z-index: 3; }
+.preview-bottomline { position: absolute; bottom: 28px; left: 32px; color: #eef3e5; font-size: 9px; letter-spacing: .22em; z-index: 3; text-shadow: 0 1px 6px #002a3b; }
 .scene-error { position: absolute; top: 80px; left: 30px; right: 30px; z-index: 5; }
 .how-it-works { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; padding: 36px 0 30px; margin-top: 17px; border-top: 1px solid #d9dece; }
 .how-it-works > div { display: flex; gap: 16px; }
@@ -109,7 +107,7 @@ h1 em, h2 em { font-weight: 400; }
 .empty-reef .little-star { font-size: 33px; color: #f2c778; }
 .empty-reef h2 { font-size: clamp(32px, 4vw, 56px); line-height: 1.16; margin: 18px 0; }
 .empty-reef p { font-size: 13px; color: #c0d4c5a6; }
-.tank-footer { position: absolute; bottom: 25px; left: 35px; right: 35px; z-index: 4; display: flex; gap: 20px; justify-content: space-between; font-size: 10px; color: #c7d9c8b3; }
+.tank-footer { position: absolute; bottom: 25px; left: 35px; right: 35px; z-index: 4; display: flex; gap: 20px; justify-content: space-between; font-size: 10px; color: #f0f4e8; text-shadow: 0 1px 6px #002a3b; }
 .tank-status { display: flex; align-items: center; gap: 9px; }
 .tank-errors { position: absolute; left: 35px; bottom: 60px; width: min(500px, calc(100% - 70px)); z-index: 6; background: #fff2dc; border-radius: 6px; padding: 12px 17px; color: #913f2e; font-size: 12px; line-height: 1.6; }
 .tank-errors p + p { margin-top: 5px; }
@@ -166,6 +164,43 @@ input::placeholder { color: #a1a18a; }
 .invalid-page { max-width: 600px; padding: 40px 25px; margin: 0 auto; }
 .invalid-page h1 { margin: 70px 0 20px; font-size: 42px; }
 .invalid-page p { font-size: 14px; line-height: 1.8; margin-bottom: 25px; }
+.coloring-page { max-width: 1100px; margin: auto; padding: 0 30px 45px; }
+.coloring-header { display: flex; justify-content: space-between; align-items: center; height: 90px; border-bottom: 1px solid #e2e3d5; gap: 20px; }
+.coloring-header .logo { font-family: var(--serif); font-size: 26px; letter-spacing: -.06em; }
+.coloring-intro { padding: 40px 0; max-width: 680px; }
+.coloring-intro h1 { font-size: clamp(36px, 5vw, 56px); margin: 15px 0; }
+.coloring-intro h1 em { color: #638674; }
+.coloring-intro p { color: #748073; font-size: 13px; line-height: 1.9; }
+.coloring-actions { display: flex; align-items: center; gap: 20px; margin: 25px 0 18px; flex-wrap: wrap; }
+.coloring-actions > span { font-size: 10px; color: #8c947c; }
+.coloring-intro .coloring-instructions { font-size: 11px; }
+.coloring-sheets { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.coloring-sheet { background: #fff; border: 1px solid #e0e1d6; border-radius: 6px; overflow: hidden; padding: 22px; break-inside: avoid; }
+.sheet-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.sheet-heading .eyebrow { font-size: 8px; color: #909783; }
+.sheet-heading h2 { font-size: 28px; margin-top: 5px; }
+.sheet-download { font-size: 10px; white-space: nowrap; }
+.coloring-sheet > img { width: 100%; height: auto; display: block; margin: 18px 0; }
+.sheet-footer { display: flex; flex-direction: column; gap: 6px; color: #909681; font-size: 9px; line-height: 1.6; }
+@media (max-width: 650px) {
+  .coloring-page { padding: 0 20px 30px; }
+  .coloring-sheets { grid-template-columns: 1fr; }
+  .coloring-header { height: 77px; }
+  .coloring-header > .text-button { font-size: 10px; }
+}
+@page { size: A4 landscape; margin: 12mm; }
+@media print {
+  :root, body { background: white !important; color: black !important; }
+  .coloring-header, .coloring-intro, .sheet-download { display: none !important; }
+  .coloring-page { padding: 0; max-width: none; margin: 0; }
+  .coloring-sheets { display: block; }
+  .coloring-sheet { width: 100%; height: 181mm; padding: 0; border: 0; border-radius: 0; break-after: page; page-break-after: always; }
+  .coloring-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .sheet-heading .eyebrow { font-family: sans-serif; font-size: 8pt; color: black; }
+  .sheet-heading h2 { font-family: Georgia, serif; font-size: 20pt; color: black; margin: 2mm 0 0; }
+  .coloring-sheet > img { width: 100%; height: 145mm; object-fit: contain; margin: 2mm 0; }
+  .sheet-footer { flex-direction: row; justify-content: space-between; font-family: sans-serif; font-size: 8pt; color: black; }
+}
 
 @media (min-width: 1500px) {
   .intro { padding-top: 60px; }

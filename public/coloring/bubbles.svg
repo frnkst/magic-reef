@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Bubbles the big round fish coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M513 228 695 129 672 236 695 340 513 249Z"/>
+    <path d="M268 132 317 62 366 127 407 86 445 157Z"/>
+    <path d="M273 333 328 402 385 335Z"/>
+    <path d="M114 223C138 89 344 72 458 125Q580 189 543 272C476 405 205 391 133 284Q96 273 114 223Z"/>
+    <path d="M303 230Q347 189 402 231L351 289Q325 272 303 230Z"/>
+    <circle cx="182" cy="195" r="32"/>
+    <circle cx="172" cy="195" r="13" fill="black" stroke="none"/>
+    <path d="M122 255Q151 268 166 246" fill="none"/>
+    <circle cx="277" cy="170" r="16"/><circle cx="386" cy="161" r="23"/>
+    <circle cx="455" cy="231" r="19"/><circle cx="258" cy="294" r="23"/>
+    <circle cx="421" cy="307" r="16"/>
+    <path d="M576 225l69-53M576 249l69 48" fill="none"/>
+  </g>
+</svg>

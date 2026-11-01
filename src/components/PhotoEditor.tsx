@@ -60,7 +60,7 @@ export function PhotoEditor({ photo, token, demo, onDone, onCancel }: {
           {preview ? <img src={preview.image} alt="Your actual drawing, automatically cut out and oriented for swimming" />
             : <div className="ai-status" role="status">
               {!analysisError && <span className="ai-spinner" aria-hidden="true" />}
-              <span>{analysisError ? 'Your fish needs another look.' : 'Tracing the drawing, keeping every little detail…'}</span>
+              <span>{analysisError ? 'Your fish needs another look.' : 'Finding the fish, keeping every little detail…'}</span>
             </div>}
           <span className="preview-caption">Original artwork. Not an AI-generated replacement.</span>
         </div>

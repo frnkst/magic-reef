@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Sunny the striped fish coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M550 230 713 115Q693 230 713 345L550 244Z"/>
+    <path d="M286 137 357 58 424 142Z"/>
+    <path d="M298 331 362 397 420 323Z"/>
+    <path d="M90 230C147 90 449 77 574 230 449 382 146 370 90 230Z"/>
+    <path d="M259 127Q232 230 255 334M335 114Q310 230 330 347M413 132Q388 231 410 333" fill="none"/>
+    <path d="m366 222 76 38-79 34Q342 260 366 222Z"/>
+    <circle cx="157" cy="207" r="27"/>
+    <circle cx="149" cy="207" r="11" fill="black" stroke="none"/>
+    <path d="M109 254Q130 259 144 244M596 223l69-59M597 247l69 51" fill="none"/>
+  </g>
+</svg>

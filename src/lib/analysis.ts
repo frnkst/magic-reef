@@ -26,12 +26,12 @@ const pointSchema = {
 export const analysisSchema = {
   type: 'object',
   properties: {
-    found: { type: 'boolean', description: 'True if one complete fish drawing or illustration can be isolated.' },
+    found: { type: 'boolean', description: 'True if one complete fish drawing or illustration can be identified.' },
     confidence: { type: 'number', description: 'Confidence from 0 to 1 in the contour and landmarks.' },
     reason: { type: 'string', description: 'Brief explanation, or actionable photography advice if no fish is found.' },
     outline: {
       type: 'array',
-      description: 'A single clockwise polygon precisely tracing the outside of the actual drawing, including every fin, tail, and dark outline. Use 40–100 ordered vertices, fewer on straight edges. No bounding boxes or generic fish shapes. Empty if not found.',
+      description: 'Exactly four clockwise corners of an axis-aligned bounding rectangle around the entire actual fish, including every fin, tail, and ink outline. Order: top-left, top-right, bottom-right, bottom-left. Include a small margin of plain paper (about 3 percent of the fish size) on every side. Empty if not found.',
       items: pointSchema,
     },
     head: { ...pointSchema, description: 'Tip of the nose/mouth, not the eye.' },
@@ -61,10 +61,17 @@ export function parseAnalysis(value: unknown): FishAnalysis {
     throw new Error('AI returned an invalid fish outline. Try another photo.');
   }
   if (!result.found) throw new Error(`AI could not find one complete fish. ${result.reason.trim() || 'Photograph a single drawing clearly from above.'}`);
-  if (result.confidence < 0.65 || result.outline.length < 6) {
+  if (result.confidence < 0.65 || result.outline.length !== 4) {
     throw new Error('AI could not confidently isolate the drawing. Try a clearer photo with the whole fish visible.');
   }
   const outline = result.outline as Point[];
+  const [topLeft, topRight, bottomRight, bottomLeft] = outline;
+  const close = (a: number, b: number) => Math.abs(a - b) < 0.002;
+  if (!close(topLeft.y, topRight.y) || !close(bottomLeft.y, bottomRight.y)
+    || !close(topLeft.x, bottomLeft.x) || !close(topRight.x, bottomRight.x)
+    || topRight.x <= topLeft.x || bottomLeft.y <= topLeft.y) {
+    throw new Error('AI returned an invalid photo crop. Try a clearer photo.');
+  }
   let area = 0;
   for (let i = 0; i < outline.length; i++) {
     const a = outline[i];

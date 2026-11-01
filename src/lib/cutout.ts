@@ -110,6 +110,7 @@ export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis):
   context.rotate(angle);
   context.translate(-center.x, -center.y);
   context.drawImage(image, 0, 0);
+  removePaper(canvas, context);
   const aspect = canvas.width / canvas.height;
   if (aspect < 0.2 || aspect > 5) throw new Error('AI found an unusual fish shape. Try a clearer photo of the whole drawing.');
   let result = canvas.toDataURL('image/png');
@@ -128,4 +129,60 @@ export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis):
   }
   if (result.length > 700_000) throw new Error('The cutout is too large to save. Try a better-lit photo.');
   return { image: result, aspect: canvas.width / canvas.height, facing };
+}
+
+function removePaper(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+  const { width, height } = canvas;
+  const pixels = context.getImageData(0, 0, width, height);
+  const data = pixels.data;
+  const brightness: number[] = [];
+  for (let index = 0; index < width * height; index++) {
+    const offset = index * 4;
+    if (data[offset + 3] === 0) continue;
+    const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
+    const max = Math.max(data[offset], data[offset + 1], data[offset + 2]);
+    if (max - min < 40 && min > 140) brightness.push(min);
+  }
+  if (brightness.length === 0) {
+    throw new Error('The drawing needs a plain, light paper background. Take a well-lit photo on white paper.');
+  }
+  brightness.sort((a, b) => a - b);
+  const threshold = Math.max(145, brightness[Math.floor(brightness.length * 0.85)] - 65);
+  const visited = new Uint8Array(width * height);
+  const queue = new Int32Array(width * height);
+  let start = 0;
+  let end = 0;
+  const enqueue = (index: number) => {
+    if (visited[index]) return;
+    visited[index] = 1;
+    const offset = index * 4;
+    const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
+    const max = Math.max(data[offset], data[offset + 1], data[offset + 2]);
+    if (data[offset + 3] === 0 || (min >= threshold && max - min < 45)) queue[end++] = index;
+  };
+  for (let x = 0; x < width; x++) {
+    enqueue(x);
+    enqueue((height - 1) * width + x);
+  }
+  for (let y = 0; y < height; y++) {
+    enqueue(y * width);
+    enqueue(y * width + width - 1);
+  }
+  // Only edge-connected paper is removed; closed white details remain intact.
+  while (start < end) {
+    const index = queue[start++];
+    data[index * 4 + 3] = 0;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    if (x > 0) enqueue(index - 1);
+    if (x < width - 1) enqueue(index + 1);
+    if (y > 0) enqueue(index - width);
+    if (y < height - 1) enqueue(index + width);
+  }
+  let visible = 0;
+  for (let index = 3; index < data.length; index += 4) if (data[index] > 0) visible++;
+  if (visible < width * height * 0.015) {
+    throw new Error('Too much of the drawing disappeared. Try a well-lit photo with a closed, dark fish outline.');
+  }
+  context.putImageData(pixels, 0, 0);
 }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Ziggy the zigzag fish coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M550 228 709 108 676 230 710 350 550 244Z"/>
+    <path d="M229 156 277 105 308 130 348 75 377 118 431 97 458 168Z"/>
+    <path d="M294 302 343 365 378 326 425 358 459 296Z"/>
+    <path d="M89 231C160 135 420 106 580 231 429 345 160 330 89 231Z"/>
+    <path d="M250 156 280 202 239 241 276 309M338 142 367 196 327 245 369 318M434 159 460 207 425 249 458 298" fill="none"/>
+    <path d="m338 219 74 30-60 31Z"/>
+    <circle cx="166" cy="215" r="23"/>
+    <circle cx="158" cy="215" r="10" fill="black" stroke="none"/>
+    <path d="M111 250Q129 251 143 240M605 221l57-60M606 247l56 56" fill="none"/>
+  </g>
+</svg>

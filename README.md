@@ -6,7 +6,7 @@ the actual drawing into the water.
 
 The MVP uses flat, transparent fish with subtle swimming deformation instead of
 3D fish models. This deliberately preserves each drawing's shape and colors.
-OpenRouter vision analysis automatically identifies the outline and head/tail
+OpenRouter vision analysis automatically identifies the crop and head/tail
 direction. The app masks and rotates the original photo pixels; it never generates
 a replacement fish. There are no required coloring templates, paid 3D models, or tests.
 
@@ -96,14 +96,32 @@ model/provider availability depends on those settings.
   give the best cutout. Leave some paper around the fins.
 - Take a well-lit photo from straight above. Avoid hands, table edges, and
   other drawings in the frame.
-- AI automatically traces the actual fish, removes everything outside the outline,
-  and rotates it for upright, horizontal swimming. No crop or direction controls.
+- AI automatically locates the fish and rotates it for upright, horizontal swimming.
+  Adaptive, edge-connected paper removal creates the transparent cutout while
+  preserving closed white details. No crop or direction controls.
 - Check the cutout preview and optionally give the fish a name. If the AI missed
   part of the drawing, choose a clearer photo or explicitly retry preparation.
 - Release the fish. The laptop polls every three seconds and downloads only
   drawings it has not loaded before. Refreshing retains the aquarium.
 - Use **Full screen** for an unobstructed view. Escape exits browser fullscreen.
   Bookmark the aquarium URL; this browser also remembers the last created room.
+
+## Printable coloring sheets
+
+Open **Print coloring sheets** on the homepage (or `/?view=coloring`).
+Six original vector fish have closed black outlines, large coloring areas, clear
+eyes, fins, and tails. Print all six on landscape A4, one fish per page, or save a
+PDF through the print dialog. Disable browser headers/footers and use 100% scale.
+Individual SVG downloads are also available under `public/coloring/`.
+
+Keep the surrounding paper white and the outline visible. Photograph a single
+colored sheet from above in good light, with all fins visible. The sheets are
+designed to help recognition, not to guarantee it; always check the AI preview.
+
+The aquarium uses an original AI-generated reef illustration at
+`public/reef-background.jpg`, with an open-water center and no baked-in fish.
+The same background appears in the homepage preview and shared/demo aquariums;
+the drawings and bubbles are animated separately in Three.js.
 
 ## MVP limits and privacy
 
@@ -130,7 +148,8 @@ model/provider availability depends on those settings.
   are capped/validated server-side. This is intended for a small, trusted-family
   deployment, not a large public service. Public launch needs additional abuse
   controls, storage budgeting, deletion/retention UX, and a privacy policy.
-- AI polygon tracing is approximate, not a pixel-perfect segmentation model.
+- AI crop detection and automatic paper removal are approximate, not a
+  pixel-perfect segmentation model. Use plain, light paper and a closed dark outline.
   Strong shadows, perspective, crowded photos, or unusual drawings can yield
   imperfect cutouts; the preview is authoritative. AI does not redraw or recolor
   the fish, and white interiors are preserved. JPEG and PNG are the most portable inputs; unsupported

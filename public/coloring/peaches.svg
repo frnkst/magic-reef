@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Peaches the flowing-finned fish coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M482 222Q575 122 704 101L668 191 719 231 669 276 703 362Q569 343 482 248Z"/>
+    <path d="M236 147Q290 74 395 53L381 146Z"/>
+    <path d="M258 317Q292 380 403 408L379 311Z"/>
+    <path d="M89 229C128 108 379 77 513 230 379 376 132 351 89 229Z"/>
+    <path d="M265 141Q238 231 270 325M347 144Q316 231 349 318" fill="none"/>
+    <path d="M306 225Q353 205 395 243L339 286Q316 258 306 225Z"/>
+    <circle cx="150" cy="207" r="25"/>
+    <circle cx="141" cy="207" r="10" fill="black" stroke="none"/>
+    <path d="M108 253Q127 259 141 245M535 221q55-56 109-76M540 235h118M535 251q55 55 109 76" fill="none"/>
+  </g>
+</svg>

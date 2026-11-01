@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="460" viewBox="0 0 800 460" role="img" aria-labelledby="title">
+  <title id="title">Pip the little diamond fish coloring sheet</title>
+  <g fill="white" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M496 228 692 118 664 231 692 344 496 244Z"/>
+    <path d="M270 139 338 51 403 139Z"/>
+    <path d="M270 323 337 409 403 323Z"/>
+    <path d="M109 231Q167 164 252 119Q340 83 428 146L542 232 428 318Q340 379 253 341 163 297 109 231Z"/>
+    <path d="M262 120Q227 230 263 344M428 146Q381 230 428 318" fill="none"/>
+    <path d="m310 222 75 39-72 28Z"/>
+    <circle cx="177" cy="217" r="23"/>
+    <circle cx="169" cy="218" r="10" fill="black" stroke="none"/>
+    <circle cx="318" cy="167" r="15"/><circle cx="352" cy="314" r="13"/>
+    <path d="M128 250Q148 253 158 240M562 226l83-64M563 243l83 63" fill="none"/>
+  </g>
+</svg>

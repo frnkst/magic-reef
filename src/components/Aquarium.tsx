@@ -218,21 +218,9 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
 
   return (
     <div className="aquarium" role="img" aria-label={`An underwater aquarium with ${fish.length} swimming paper fish`}>
-      <div className="water-light water-light-one" />
-      <div className="water-light water-light-two" />
-      <svg className="seabed" viewBox="0 0 1440 280" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0 199Q170 170 380 221T850 218T1440 196V280H0Z" fill="#426660" opacity=".3" />
-        <path d="M0 235Q270 189 550 237T1090 220T1440 242V280H0Z" fill="#789183" opacity=".24" />
-        <g fill="none" strokeLinecap="round">
-          <path d="M106 251Q76 188 103 108T93 20M111 250Q133 210 125 165T149 92M93 246Q66 212 64 179" stroke="#548578" strokeWidth="10" />
-          <path d="M1290 258Q1324 199 1299 139T1320 47M1296 255Q1264 209 1277 158M1310 252Q1358 212 1346 179T1359 113" stroke="#578777" strokeWidth="12" />
-          <path d="M195 258Q226 220 213 181M1216 261Q1203 230 1217 212" stroke="#8ca390" strokeWidth="7" />
-        </g>
-        <g fill="#8ba095" opacity=".5">
-          <ellipse cx="75" cy="261" rx="57" ry="15" /><ellipse cx="1351" cy="268" rx="74" ry="18" />
-          <ellipse cx="1153" cy="270" rx="33" ry="9" /><ellipse cx="306" cy="267" rx="20" ry="6" />
-        </g>
-      </svg>
+      <img className="reef-background" src="/reef-background.jpg" alt="" onError={() => {
+        onError('The reef background could not be loaded. Reload the aquarium to try again.');
+      }} />
       <div className="three-scene" ref={host} />
     </div>
   );

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { Aquarium } from './components/Aquarium';
 import { PhotoEditor } from './components/PhotoEditor';
+import { ColoringPages } from './components/ColoringPages';
 import { sampleFish } from './lib/drawings';
 import { openPhoto } from './lib/cutout';
 import { configured, createTank, errorMessage, loadFish, MAX_FISH, readDemoFish, reefLink } from './lib/reef';
@@ -156,6 +157,7 @@ export function App() {
   if (upload) {
     return <UploadPage connected={hasTank && (demo || configured)} syncError={syncError} synced={synced} count={fish.length} />;
   }
+  if (params.get('view') === 'coloring') return <ColoringPages />;
 
   if (token && !validToken) {
     return <main className="invalid-page"><Logo /><h1>This link is missing a little magic.</h1><p>The aquarium link is invalid. Scan the QR code on the laptop again.</p><a className="button button-primary" href="/">Go home →</a></main>;
@@ -163,7 +165,7 @@ export function App() {
 
   if (!hasTank) {
     return <main className="landing">
-      <header className="landing-header"><Logo /><span className="small-note">Made of paper. Full of possibility.</span></header>
+      <header className="landing-header"><Logo /><a className="text-button" href="/?view=coloring">Print coloring sheets ↗</a></header>
       <div className="landing-body">
         <section className="intro">
           <span className="eyebrow"><span className="little-star" aria-hidden="true">✳</span> A little ocean for big imaginations</span>
@@ -292,6 +294,7 @@ function UploadPage({ connected, syncError, synced, count }: {
           </label>
         </>}
         <p className="photo-tip"><strong>A small tip for a great fish</strong>Use plain white paper and a closed, dark outline. Photograph from straight above in good light, with no hands or other drawings in the frame.</p>
+        <a className="text-button" href="/?view=coloring" target="_blank" rel="noreferrer">Need a fish to color? Print a sheet ↗</a>
         <p className="privacy-note">Selecting a photo sends a resized copy to OpenRouter and its AI provider to find the fish. Avoid faces and personal details. You approve the cutout before it is saved in the aquarium.</p>
         {error && <p className="error" role="alert">{error}</p>}
       </section>}
