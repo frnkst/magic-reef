@@ -26,7 +26,7 @@ const pointSchema = {
 export const analysisSchema = {
   type: 'object',
   properties: {
-    found: { type: 'boolean', description: 'True only if one complete hand-drawn fish can be isolated.' },
+    found: { type: 'boolean', description: 'True if one complete fish drawing or illustration can be isolated.' },
     confidence: { type: 'number', description: 'Confidence from 0 to 1 in the contour and landmarks.' },
     reason: { type: 'string', description: 'Brief explanation, or actionable photography advice if no fish is found.' },
     outline: {
@@ -60,7 +60,7 @@ export function parseAnalysis(value: unknown): FishAnalysis {
     || !isPoint(result.head) || !isPoint(result.tail) || !isPoint(result.back)) {
     throw new Error('AI returned an invalid fish outline. Try another photo.');
   }
-  if (!result.found) throw new Error('AI could not find one complete fish. Photograph a single drawing clearly from above.');
+  if (!result.found) throw new Error(`AI could not find one complete fish. ${result.reason.trim() || 'Photograph a single drawing clearly from above.'}`);
   if (result.confidence < 0.65 || result.outline.length < 6) {
     throw new Error('AI could not confidently isolate the drawing. Try a clearer photo with the whole fish visible.');
   }
