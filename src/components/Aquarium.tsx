@@ -22,6 +22,19 @@ interface SceneState {
   disposed: boolean;
 }
 
+function drawingHeight(drawing: Fish) {
+  const size = drawing.size ?? 'medium';
+  const heights = drawing.kind === 'plant' ? { small: 1.6, medium: 2.5, large: 4 }
+    : drawing.kind === 'submarine' ? { small: 1.2, medium: 1.9, large: 3.3 }
+      : { small: 1.3, medium: 2, large: 3.5 };
+  return heights[size];
+}
+
+function drawingFit(drawing: Fish, height: number, width: number) {
+  const fraction = { small: 0.35, medium: 0.5, large: 0.75 }[drawing.size ?? 'medium'];
+  return Math.min(1, width * fraction / (height * drawing.aspect));
+}
+
 function plantPosition(id: string, width: number, height: number, aspect: number, fit: number) {
   let hash = 0;
   for (const character of id) hash = (Math.imul(hash, 31) + character.charCodeAt(0)) >>> 0;
@@ -146,7 +159,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
       for (const swimmer of current.swimmers.values()) {
-        const fit = Math.min(1, current.width * 0.42 / (swimmer.height * swimmer.fish.aspect));
+        const fit = drawingFit(swimmer.fish, swimmer.height, current.width);
         swimmer.mesh.scale.y = fit;
         swimmer.mesh.scale.x = Math.sign(swimmer.mesh.scale.x) * fit;
         const bound = Math.max(0.1, current.width / 2 - swimmer.height * swimmer.fish.aspect * fit / 2);
@@ -224,7 +237,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     });
     let targetId: string | null = null;
     let huntStartedAt = 0;
-    let nextHuntAt = 12 + Math.random() * 10;
+    let nextHuntAt = 180;
     let sharkDirection = 1;
     let chompAt = -10;
     let nextBlinkAt = 4 + Math.random() * 5;
@@ -346,7 +359,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
       for (const swimmer of current.swimmers.values()) {
         const { mesh, height, fish: drawing } = swimmer;
         const kind = drawing.kind ?? 'fish';
-        const fit = Math.min(1, current.width * 0.42 / (height * drawing.aspect));
+        const fit = drawingFit(drawing, height, current.width);
         if (kind === 'plant') {
           const position = plantPosition(drawing.id, current.width, height, drawing.aspect, fit);
           mesh.position.set(position.x, position.y, -0.5);
@@ -433,7 +446,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         if (targetId && (!target || target.eatenAt !== null || elapsed - huntStartedAt > 18)) {
           targetId = null;
           target = undefined;
-          nextHuntAt = elapsed + 20 + Math.random() * 25;
+          nextHuntAt = elapsed + 5;
         }
         if (!targetId && elapsed >= nextHuntAt) {
           const candidates = [...current.swimmers.values()].filter((swimmer) => (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.eatenAt === null && swimmer.fish.id !== fishingTargetId);
@@ -485,7 +498,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           target.eatenAt = elapsed;
           chompAt = elapsed;
           targetId = null;
-          nextHuntAt = elapsed + 20 + Math.random() * 25;
+          nextHuntAt = elapsed + 180;
         }
       }
       for (const { bubble, fraction, baseY, speed } of bubbles) {
@@ -530,9 +543,9 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
   useEffect(() => {
     const current = state.current;
     if (!current) return;
-    const wanted = new Set(fish.map((drawing) => drawing.id));
+    const wanted = new Map(fish.map((drawing) => [drawing.id, drawing]));
     for (const [id, swimmer] of current.swimmers) {
-      if (!wanted.has(id)) {
+      if (!wanted.has(id) || (wanted.get(id)?.size ?? 'medium') !== (swimmer.fish.size ?? 'medium')) {
         current.scene.remove(swimmer.mesh);
         swimmer.mesh.geometry.dispose();
         swimmer.mesh.material.dispose();
@@ -552,7 +565,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         texture.colorSpace = THREE.SRGBColorSpace;
         const index = current.swimmers.size;
         const kind = drawing.kind ?? 'fish';
-        const height = kind === 'plant' ? 2.2 : kind === 'submarine' ? 1.35 : 0.9 + (index % 4) * 0.15;
+        const height = drawingHeight(drawing);
         const geometry = new THREE.PlaneGeometry(height * drawing.aspect, height, 24, 8);
         const material = new THREE.ShaderMaterial({
           uniforms: {
@@ -596,7 +609,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         const mesh = new THREE.Mesh(geometry, material);
         const direction = index % 2 === 0 ? -1 : 1;
         const baseY = 2.8 - ((index * 1.91) % 5.4);
-        const fit = Math.min(1, current.width * 0.42 / (height * drawing.aspect));
+        const fit = drawingFit(drawing, height, current.width);
         mesh.scale.set(direction * (drawing.facing === 'right' ? 1 : -1) * fit, fit, 1);
         mesh.position.set(((index * 0.382 + 0.22) % 1 - 0.5) * current.width * 0.7, baseY, (index % 5) * 0.1);
         if (kind === 'plant') {

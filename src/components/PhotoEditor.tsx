@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { prepareFish } from '../lib/cutout';
 import { errorMessage, releaseFish } from '../lib/reef';
-import type { Fish } from '../lib/reef';
+import type { DrawingSize, Fish } from '../lib/reef';
 
 type PreparedFish = Omit<Fish, 'id' | 'name'>;
 
@@ -15,6 +15,7 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
 }) {
   const [name, setName] = useState('');
   const [child, setChild] = useState('');
+  const [size, setSize] = useState<DrawingSize>('medium');
   const [preview, setPreview] = useState<PreparedFish | null>(null);
   const [analysisError, setAnalysisError] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -50,7 +51,7 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
     setSubmitError('');
     const fishName = name.trim() || (preview.kind === 'plant' ? 'Little plant' : preview.kind === 'submarine' ? 'Little submarine' : 'Little fish');
     try {
-      await releaseFish(token, { ...preview, name: fishName, child: child.trim() }, demo);
+      await releaseFish(token, { ...preview, name: fishName, child: child.trim(), size }, demo);
       onDone(fishName);
     } catch (error) {
       setSubmitError(errorMessage(error));
@@ -105,6 +106,23 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
         </>}
         {preview && <>
           <p className="field-hint">{preview.kind === 'plant' ? 'This plant will stay anchored on the seabed.' : preview.kind === 'submarine' ? 'This submarine will cruise through the water. Sharks leave it alone.' : 'This fish will swim through the reef.'} Check the preview; choose a clearer photo if part of the drawing is missing.</p>
+          <fieldset className="drawing-size" disabled={busy}>
+            <legend className="field-label">How big in the reef?</legend>
+            <div className="size-choices">
+              {(['small', 'medium', 'large'] as const).map((value) => <label key={value} className={`size-choice${size === value ? ' selected' : ''}`}>
+                <input type="radio" name="drawing-size" value={value} checked={size === value} onChange={() => setSize(value)} />
+                <svg width="48" height="40" viewBox="0 0 48 40" aria-hidden="true">
+                  <g transform={`translate(24 20) scale(${value === 'small' ? 0.45 : value === 'medium' ? 0.7 : 1}) translate(-24 -20)`}>
+                    {preview.kind === 'plant' ? <path d="M24 36V6m0 15C9 21 9 10 9 10s15 0 15 11Zm0 8c15 0 15-11 15-11s-15 0-15 11Z" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                      : preview.kind === 'submarine' ? <><rect x="5" y="13" width="38" height="20" rx="10" fill="currentColor" /><path d="M25 14V7h7" fill="none" stroke="currentColor" strokeWidth="3" /><circle cx="24" cy="23" r="5" fill="var(--paper)" /></>
+                        : <><path d="M7 20C14 6 31 6 39 20c-8 14-25 14-32 0Zm1 0L1 12v16Z" fill="currentColor" /><circle cx="31" cy="17" r="2" fill="var(--paper)" /></>}
+                  </g>
+                </svg>
+                <span>{value[0].toUpperCase() + value.slice(1)}</span>
+              </label>)}
+            </div>
+            <p className="field-hint">{size === 'small' ? 'A little reef companion.' : size === 'medium' ? 'Easy to spot, with plenty of room to swim.' : 'Big, bold, and impossible to miss.'} Size changes only how it appears in the aquarium, not the artwork.</p>
+          </fieldset>
           <label className="field-label" htmlFor="child-name">Who drew it? <span>optional</span></label>
           <input id="child-name" type="text" placeholder="Child’s first name" maxLength={40} list="child-names"
             value={child} disabled={busy} autoComplete="off" onChange={(event) => setChild(event.target.value)} />

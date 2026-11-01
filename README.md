@@ -48,10 +48,10 @@ between a phone and laptop. The shared aquarium requires Supabase.
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the project's **SQL Editor**, paste all of `supabase/schema.sql`, and run
    it once. Then run `supabase/ai.sql`, `supabase/drawings.sql`, and
-   `supabase/party.sql` in that order.
+   `supabase/party.sql` and `supabase/sizes.sql` in that order.
    For an existing aquarium, do not re-run `schema.sql`; run the other two
-   scripts and `party.sql` to add the AI request budget, drawing types,
-   child names, and owner-only write permissions.
+   scripts, `party.sql`, and `sizes.sql` to add the AI request budget, drawing types,
+   child names, sizes, and owner-only write permissions.
 3. In the project's API settings, find the project URL and **publishable** key
    (the legacy **anon** key also works). Put them in `.env.local`:
 
@@ -210,13 +210,24 @@ is masked to the side coral regions, leaving the open water, surface, and centra
 sand steady. Coral sway is disabled with reduced-motion preferences; uploaded
 plant drawings remain stationary.
 
+## Drawing sizes
+
+Choose **Small**, **Medium**, or **Large** before releasing any fish, submarine,
+or plant. Medium is the default, including for previously saved drawings.
+Fish and submarines are larger than before; Large is a bold centerpiece.
+The same saved size is shown on every viewing screen, with responsive fitting
+to keep drawings inside narrow aquariums. Size does not redraw the artwork or
+make another AI request. Plants remain rooted to the seabed at every size.
+
 ## The playful shark
 
 A friendly shark circles the water and occasionally pursues a randomly chosen
 fish. After a brief gulp animation, the fish takes a **15-second break** and then
 swims back in. There is **no age protection**, so new fish can be chosen too.
-The first pursuit starts after 12–22 seconds; later pursuits are spaced randomly
-20–45 seconds apart. The shark always faces its direction of travel and blinks
+The first pursuit starts after three minutes of visible aquarium time. After each
+meal the shark waits at least another three minutes before pursuing a fish.
+Unsuccessful pursuits may retry, but never shorten that meal cooldown.
+The shark always faces its direction of travel and blinks
 occasionally. Gulping and returning happen without notification overlays.
 Its body and tail now undulate with the swimming rhythm, without bending its
 nose away from its travel direction; reduced motion disables that deformation.
