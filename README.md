@@ -1,5 +1,19 @@
 # Magic Reef
 
+**From crayons to coral reefs. A little ocean for big imaginations.**
+
+Turn children's artwork into a living underwater world: fish swim, submarines
+cruise, plants grow a paper garden, and a playful shark patrols the reef.
+Photograph a drawing on your phone and watch the original artwork join the
+aquarium on your laptop—no redrawing, no special templates.
+
+[Open Magic Reef](https://magic-reef.void0.ch) ·
+[Print coloring sheets](https://magic-reef.void0.ch/?view=coloring)
+
+![Magic Reef aquarium with original colored fish, submarines, plants, and a playful shark](docs/screenshots/aquarium.png)
+
+![Magic Reef homepage with the saved aquarium shortcut and rounded underwater-inspired typography](docs/screenshots/homepage.png)
+
 A small React + Three.js aquarium for children's drawings. Open the aquarium on
 a laptop, scan its QR code with a phone, photograph a drawing, and release
 the actual drawing into the water.
@@ -107,7 +121,13 @@ model/provider availability depends on those settings.
 - Release the drawing. The laptop polls every three seconds and downloads only
   drawings it has not loaded before. Refreshing retains the aquarium.
 - Use **Full screen** for an unobstructed view. Escape exits browser fullscreen.
-  Bookmark the aquarium URL; this browser also remembers the last created room.
+  Created aquariums and successfully opened shared rooms are remembered in local
+  storage. Go back to the homepage and select **Open your aquarium** to reopen
+  the latest room. This is browser-specific; clearing site data or leaving a private
+  browsing session removes the saved link. Bookmark the URL as a backup.
+- Select **Sound off** in the aquarium toolbar to enable soft bubbling and
+  airflow sounds. Select **Sound on** to mute. Audio is generated locally with
+  Web Audio, starts only after your click, and pauses while the tab is hidden.
 
 ## Printable coloring sheets
 
@@ -136,7 +156,8 @@ A friendly shark circles the water and occasionally pursues a randomly chosen
 fish. After a brief gulp animation, the fish takes a **15-second break** and then
 swims back in. There is **no age protection**, so new fish can be chosen too.
 The first pursuit starts after 12–22 seconds; later pursuits are spaced randomly
-20–45 seconds apart. A small message explains when a fish leaves and returns.
+20–45 seconds apart. The shark always faces its direction of travel and blinks
+occasionally. Gulping and returning happen without notification overlays.
 
 This is a local visual animation, not deletion: drawings remain in Supabase/local
 storage, and the fish count includes temporarily hidden fish. Each viewing screen

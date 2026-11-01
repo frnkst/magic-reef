@@ -3,16 +3,19 @@ import QRCode from 'qrcode';
 import { Aquarium } from './components/Aquarium';
 import { PhotoEditor } from './components/PhotoEditor';
 import { ColoringPages } from './components/ColoringPages';
+import { AquariumSound } from './components/AquariumSound';
 import { sampleFish } from './lib/drawings';
 import { openPhoto } from './lib/cutout';
 import { configured, createTank, errorMessage, loadFish, MAX_FISH, readDemoFish, reefLink } from './lib/reef';
 import type { Fish } from './lib/reef';
 
+const lastTankKey = 'magic-reef-last-tank';
+const tankTokenPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const params = new URLSearchParams(window.location.search);
 const token = params.get('tank');
 const demo = params.get('demo') === '1';
 const upload = params.get('view') === 'upload';
-const validToken = token !== null && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
+const validToken = token !== null && tankTokenPattern.test(token);
 const hasTank = demo || validToken;
 
 function Logo({ light = false }: { light?: boolean }) {
@@ -51,8 +54,9 @@ export function App() {
       if (active) setGraphicsError(errorMessage(error));
     });
     try {
-      const saved = localStorage.getItem('magic-reef-last-tank');
-      if (saved && /^[0-9a-f-]{36}$/i.test(saved)) setSavedTank(saved);
+      const saved = localStorage.getItem(lastTankKey);
+      if (saved && tankTokenPattern.test(saved)) setSavedTank(saved);
+      else if (saved) setStartError('Your saved aquarium link is damaged. Create a new aquarium or open its original link.');
     } catch (error) {
       setStartError(`Your browser blocked saved links: ${errorMessage(error)}`);
     }
@@ -63,6 +67,7 @@ export function App() {
     if (!hasTank) return;
     let active = true;
     let timeout = 0;
+    let remembered = false;
     const sync = async () => {
       if (document.hidden) {
         if (active) timeout = window.setTimeout(sync, 3000);
@@ -75,6 +80,15 @@ export function App() {
         setFish(next);
         setSynced(true);
         setSyncError('');
+        if (!demo && !upload && !remembered) {
+          remembered = true;
+          try {
+            localStorage.setItem(lastTankKey, token!);
+            setSavedTank(token);
+          } catch (error) {
+            setStartError(`Your browser could not remember this aquarium: ${errorMessage(error)}. Bookmark its link to keep it.`);
+          }
+        }
       } catch (error) {
         if (active) {
           setSynced(false);
@@ -117,7 +131,7 @@ export function App() {
     try {
       const newToken = await createTank();
       try {
-        localStorage.setItem('magic-reef-last-tank', newToken);
+        localStorage.setItem(lastTankKey, newToken);
       } catch {
         window.alert('Your browser could not remember the aquarium. Bookmark the next page to keep its link.');
       }
@@ -172,11 +186,12 @@ export function App() {
           <h1>From the kitchen<br />table to the<br /> <em>deep blue.</em></h1>
           <p>A fish, a few crayons, a little magic.<br />Let your children’s drawings swim in an aquarium of their very own.</p>
           <div className="intro-actions">
-            <button className="button button-primary" onClick={start} disabled={starting || !configured}>
-              {starting ? 'Making room in the ocean…' : 'Create an aquarium'} <span aria-hidden="true">↗</span>
+            {savedTank && configured && <a className="button button-primary resume-link" href={reefLink(savedTank, false)}>Open your aquarium <span aria-hidden="true">↗</span></a>}
+            <button className={`button ${savedTank && configured ? 'button-secondary' : 'button-primary'}`} onClick={start} disabled={starting || !configured}>
+              {starting ? 'Making room in the ocean…' : savedTank && configured ? 'Create another aquarium' : 'Create an aquarium'} <span aria-hidden="true">↗</span>
             </button>
             <a className="text-button" href="/?demo=1">Try the local demo →</a>
-            {savedTank && configured && <a className="text-button resume-link" href={reefLink(savedTank, false)}>Return to your aquarium</a>}
+            {savedTank && configured && <p className="saved-link-note">Your aquarium link is saved on this browser.</p>}
           </div>
           {!configured && <p className="setup-note">The demo is ready. To connect a phone and laptop, add the Supabase keys described in the README.</p>}
           {startError && <p className="error" role="alert">{startError}</p>}
@@ -206,6 +221,7 @@ export function App() {
     <header className="tank-header">
       <Logo light />
       <div className="tank-tools">
+        <AquariumSound />
         <button className="glass-button" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide' : 'Add a drawing'} <span aria-hidden="true">＋</span></button>
         <button className="glass-button fullscreen-button" onClick={fullscreen}>Full screen <span aria-hidden="true">⛶</span></button>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import type { Fish } from '../lib/reef';
 
@@ -32,7 +32,6 @@ function plantPosition(id: string, width: number, height: number, aspect: number
 export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: string) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const state = useRef<SceneState | null>(null);
-  const [sharkMessage, setSharkMessage] = useState('Reef patrol · fish always come back');
 
   useEffect(() => {
     if (!host.current) return;
@@ -171,6 +170,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     shark.visible = false;
     scene.add(shark);
     let sharkTexture: THREE.Texture | null = null;
+    let sharkBlinkTexture: THREE.CanvasTexture | null = null;
     new THREE.TextureLoader().load('/shark.svg', (texture) => {
       if (current.disposed) {
         texture.dispose();
@@ -181,6 +181,30 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
       sharkMaterial.map = texture;
       sharkMaterial.needsUpdate = true;
       shark.visible = true;
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 400;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        onError('The shark blink could not be prepared. Reload the aquarium to try again.');
+        return;
+      }
+      // Copy the artwork and cover its eye with a skin-colored, closed eyelid.
+      context.drawImage(texture.image as HTMLImageElement, 0, 0, 800, 400);
+      const skin = context.getImageData(646, 158, 1, 1).data;
+      context.fillStyle = `rgb(${skin[0]}, ${skin[1]}, ${skin[2]})`;
+      context.beginPath();
+      context.arc(646, 184, 25, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = '#285565';
+      context.lineWidth = 5;
+      context.lineCap = 'round';
+      context.beginPath();
+      context.moveTo(630, 183);
+      context.quadraticCurveTo(646, 191, 662, 183);
+      context.stroke();
+      sharkBlinkTexture = new THREE.CanvasTexture(canvas);
+      sharkBlinkTexture.colorSpace = THREE.SRGBColorSpace;
     }, undefined, () => {
       if (!current.disposed) onError('The shark artwork could not be loaded. Reload the aquarium to try again.');
     });
@@ -189,6 +213,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     let nextHuntAt = 12 + Math.random() * 10;
     let sharkDirection = 1;
     let chompAt = -10;
+    let nextBlinkAt = 4 + Math.random() * 5;
+    let blinkUntil = 0;
     const mouth = new THREE.Vector3();
     let elapsed = 0;
     let previousTime = performance.now();
@@ -222,7 +248,6 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             if (!mesh.visible) {
               mesh.visible = true;
               mesh.position.x = -Math.sign(shark.position.x || 1) * current.width * 0.3;
-              setSharkMessage(`${drawing.name} is back! No drawings are ever deleted.`);
             }
             appearance = Math.min(1, (sinceGulp - 15.5) / 0.8);
             if (appearance === 1) swimmer.eatenAt = null;
@@ -271,19 +296,18 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           }
         }
         if (target) {
-          if (Math.abs(target.mesh.position.x - shark.position.x) > 0.3) {
-            sharkDirection = Math.sign(target.mesh.position.x - shark.position.x);
-          }
-          // Aim the mouth, not the center of the shark, at the moving fish.
+          sharkDirection = Math.sign(target.mesh.position.x - shark.position.x) || sharkDirection;
+          const alignedX = target.mesh.position.x - sharkDirection * 1.16 * sharkFit;
+          // Wait for nearby fish to reach the mouth rather than backing into them.
           destination.set(
-            target.mesh.position.x - sharkDirection * 1.16 * sharkFit,
+            sharkDirection * (alignedX - shark.position.x) > 0 ? alignedX : shark.position.x,
             target.mesh.position.y + 0.2 * sharkFit,
           );
           destination.x = THREE.MathUtils.clamp(destination.x, -horizontalRadius, horizontalRadius);
         }
         const dx = destination.x - shark.position.x;
         const dy = destination.y - shark.position.y;
-        if (!target && Math.abs(dx) > 0.06) sharkDirection = Math.sign(dx);
+        if (dx !== 0) sharkDirection = Math.sign(dx);
         const distance = Math.hypot(dx, dy);
         const speed = target ? (reducedMotion.matches ? 1.8 : 3.4) : (reducedMotion.matches ? 0.4 : 1.2);
         const step = Math.min(distance, speed * delta);
@@ -293,10 +317,15 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         }
         const chomp = Math.max(0, 1 - (elapsed - chompAt) / 0.6);
         const stretch = reducedMotion.matches ? 1 : 1 + Math.sin(chomp * Math.PI) * 0.08;
-        shark.scale.x = THREE.MathUtils.lerp(shark.scale.x, sharkDirection * sharkFit * stretch, Math.min(1, delta * 5));
+        shark.scale.x = sharkDirection * sharkFit * stretch;
         shark.scale.y = sharkFit;
         const pitch = reducedMotion.matches ? 0 : THREE.MathUtils.clamp(Math.atan2(dy, Math.abs(dx) + 0.5) * sharkDirection, -0.25, 0.25);
-        shark.rotation.z = THREE.MathUtils.lerp(shark.rotation.z, pitch, Math.min(1, delta * 3));
+        shark.rotation.z = pitch;
+        if (elapsed >= nextBlinkAt) {
+          blinkUntil = elapsed + 0.18;
+          nextBlinkAt = blinkUntil + 4 + Math.random() * 7;
+        }
+        sharkMaterial.map = elapsed < blinkUntil && sharkBlinkTexture ? sharkBlinkTexture : sharkTexture;
         shark.updateMatrixWorld();
         mouth.set(1.16, -0.2, 0);
         shark.localToWorld(mouth);
@@ -304,7 +333,6 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           && Math.hypot(mouth.x - target.mesh.position.x, mouth.y - target.mesh.position.y) < 0.6 * sharkFit + target.height * 0.2) {
           target.eatenAt = elapsed;
           chompAt = elapsed;
-          setSharkMessage(`Chomp! ${target.fish.name} will be back in 15 seconds.`);
           targetId = null;
           nextHuntAt = elapsed + 20 + Math.random() * 25;
         }
@@ -334,6 +362,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
       sharkGeometry.dispose();
       sharkMaterial.dispose();
       sharkTexture?.dispose();
+      sharkBlinkTexture?.dispose();
       renderer.dispose();
       renderer.domElement.remove();
       if (state.current === current) state.current = null;
@@ -432,14 +461,11 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
   }, [fish, onError]);
 
   return (
-    <>
     <div className="aquarium" role="img" aria-label={`An underwater aquarium with ${fish.length} paper drawings, cruising submarines, stationary plants, and a playful circling shark. Gulped fish return after 15 seconds.`}>
       <img className="reef-background" src="/reef-background.jpg" alt="" onError={() => {
         onError('The reef background could not be loaded. Reload the aquarium to try again.');
       }} />
       <div className="three-scene" ref={host} />
     </div>
-    <p className="shark-status" role="status" aria-live="polite">{sharkMessage}</p>
-    </>
   );
 }
