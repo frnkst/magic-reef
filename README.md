@@ -48,9 +48,10 @@ between a phone and laptop. The shared aquarium requires Supabase.
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the project's **SQL Editor**, paste all of `supabase/schema.sql`, and run
    it once. Then run `supabase/ai.sql`, `supabase/drawings.sql`, and
-   `supabase/party.sql`, `supabase/sizes.sql`, and `supabase/movement.sql` in that order.
+   `supabase/party.sql`, `supabase/sizes.sql`, `supabase/movement.sql`, and
+   `supabase/unlimited.sql` in that order.
    For an existing aquarium, do not re-run `schema.sql`; run the other two
-   scripts, `party.sql`, `sizes.sql`, and `movement.sql` to add the AI request budget, drawing types,
+   scripts, `party.sql`, `sizes.sql`, `movement.sql`, and `unlimited.sql` to add drawing types,
    child names, sizes, and owner-only write permissions.
 3. In the project's API settings, find the project URL and **publishable** key
    (the legacy **anon** key also works). Put them in `.env.local`:
@@ -139,12 +140,12 @@ demo uploads. `npm run preview` serves only static files and cannot prepare new
 drawings; use the development server or the deployed Vercel site for uploads.
 
 The deployed demo does not allow paid AI requests without a valid shared room.
-The database limits shared rooms to 10 analysis attempts per 10 minutes and the
-deployment to 200 per rolling day, with concurrent-safe reservations. Failed
-attempts also count. Each preview update above 0% makes an image-editing call plus
-a vision-analysis call; it counts as one preparation attempt. Slider movement alone
-does not make requests; press **Update preview** to apply it. These are basic MVP spending safeguards, not a substitute for
-setting a credit limit on the OpenRouter key and Vercel abuse/firewall controls.
+There are no app-imposed AI attempt, daily usage, or drawing-count caps.
+Owner authentication is still required. Each preview update above 0% makes an
+image-editing call plus a vision-analysis call. Slider movement alone does not
+make requests; press **Update preview** to apply it. AI calls still cost money,
+and provider quotas, account credits, hosting resources, and browser storage
+remain practical constraints.
 The service requests providers that do not collect data (`data_collection: deny`);
 model/provider availability depends on those settings.
 
@@ -157,7 +158,10 @@ model/provider availability depends on those settings.
 - AI automatically identifies the subject and its orientation. Fish/submarines
   become upright horizontal swimmers; plants remain vertical, rooted to the seabed.
   Edge-sampled, shadow-aware paper removal creates the transparent cutout while
-  preserving closed white details. No crop or direction controls.
+  preserving closed white details. Use **Rotate left**, **Rotate right**, or
+  **Reset rotation** to correct the approved cutout in 90-degree steps before
+  release. Rotation preserves transparency and saves the actual rotated pixels,
+  not just a preview transform; it makes no additional AI request.
 - Use the **Keep my drawing / Let AI fill it in** slider to choose how much help
   to allow. **0%** preserves original colors, marks, and blank areas. Low settings
   ask for small repairs; higher settings ask AI to fill and interpret more freely.
@@ -270,9 +274,9 @@ while the tab is hidden, and uses gentler movement with reduced motion.
 
 ## MVP limits and privacy
 
-- Each aquarium accepts **40 uploaded drawings total** across fish, submarines,
-  and plants. The local demo also has three
-  original starter drawings.
+- There is no app-imposed drawing-count or AI usage cap. The local demo also
+  has three original starter drawings. Large aquariums require more memory,
+  rendering work, and storage; local demo storage is constrained by the browser.
 - Selecting a photo sends a resized JPEG (at most 1600 pixels on its longest side)
   through the Vercel function to **OpenRouter and its selected AI provider** for
   analysis and, when interpretation is above 0%, image editing.

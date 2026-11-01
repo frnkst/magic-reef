@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { prepareFish } from '../lib/cutout';
+import { prepareFish, rotateDrawing } from '../lib/cutout';
 import { errorMessage, releaseFish } from '../lib/reef';
 import type { DrawingSize, Fish } from '../lib/reef';
 
@@ -17,6 +17,9 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
   const [child, setChild] = useState('');
   const [size, setSize] = useState<DrawingSize>('medium');
   const [preview, setPreview] = useState<PreparedFish | null>(null);
+  const [rotation, setRotation] = useState(0);
+  const [rotatedPreview, setRotatedPreview] = useState<PreparedFish | null>(null);
+  const [rotationError, setRotationError] = useState('');
   const [analysisError, setAnalysisError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -26,6 +29,21 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
   const pending = useMemo(() => new Map<number, Promise<PreparedFish>>(), [photo, token, demo]);
   const preparing = !preview && !analysisError;
   const changed = interpretation !== appliedInterpretation;
+  const rotating = Boolean(preview && !rotatedPreview && !rotationError);
+
+  useEffect(() => {
+    let active = true;
+    setRotatedPreview(null);
+    setRotationError('');
+    if (preview) {
+      rotateDrawing(preview, rotation).then((drawing) => {
+        if (active) setRotatedPreview(drawing);
+      }).catch((error: unknown) => {
+        if (active) setRotationError(errorMessage(error));
+      });
+    }
+    return () => { active = false; };
+  }, [preview, rotation]);
 
   useEffect(() => {
     let active = true;
@@ -46,12 +64,12 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
   }, [photo, token, demo, attempt, appliedInterpretation, pending]);
 
   const release = async () => {
-    if (!preview || busy || changed) return;
+    if (!rotatedPreview || busy || changed) return;
     setBusy(true);
     setSubmitError('');
-    const fishName = name.trim() || (preview.kind === 'plant' ? 'Little plant' : preview.kind === 'submarine' ? 'Little submarine' : 'Little fish');
+    const fishName = name.trim() || (rotatedPreview.kind === 'plant' ? 'Little plant' : rotatedPreview.kind === 'submarine' ? 'Little submarine' : rotatedPreview.movement === 'walk' ? 'Little crab' : 'Little fish');
     try {
-      await releaseFish(token, { ...preview, name: fishName, child: child.trim(), size }, demo);
+      await releaseFish(token, { ...rotatedPreview, name: fishName, child: child.trim(), size }, demo);
       onDone(fishName);
     } catch (error) {
       setSubmitError(errorMessage(error));
@@ -90,7 +108,7 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
             }}>Update preview <span aria-hidden="true">↗</span></button>}
         </div>
         <div className={`cutout-preview${!preview && !analysisError ? ' preparing-preview' : ''}`} aria-busy={!preview && !analysisError}>
-          {preview ? <img src={preview.image} alt={appliedInterpretation === 0 ? 'Your original drawing cut out for the aquarium' : 'AI-interpreted drawing to approve before adding it'} />
+          {preview ? <img src={rotatedPreview?.image ?? preview.image} alt={appliedInterpretation === 0 ? 'Your original drawing cut out for the aquarium' : 'AI-interpreted drawing to approve before adding it'} />
             : <div className="ai-status" role="status">
               {!analysisError && <span className="ai-spinner" aria-hidden="true" />}
               <span>{analysisError ? 'Your drawing needs another look.' : appliedInterpretation === 0 ? 'Finding the drawing, keeping every little detail…' : 'Filling in the blanks, keeping their imagination…'}</span>
@@ -105,6 +123,13 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
           }}>Try AI preparation again</button>
         </>}
         {preview && <>
+          <div className="rotation-controls" aria-label="Rotate your drawing">
+            <button className="button button-secondary" disabled={busy || rotating} onClick={() => setRotation((value) => (value + 3) % 4)}>↶ Rotate left</button>
+            <button className="button button-secondary" disabled={busy || rotating} onClick={() => setRotation((value) => (value + 1) % 4)}>Rotate right ↷</button>
+            <button className="text-button" disabled={busy || !rotation} onClick={() => setRotation(0)}>Reset rotation</button>
+          </div>
+          <p className="field-hint" role="status">{rotating ? 'Turning your drawing…' : `Rotation: ${rotation * 90}°. The rotated cutout is saved as shown. No extra AI request.`}</p>
+          {rotationError && <p className="error" role="alert">{rotationError}</p>}
           <p className="field-hint">{preview.movement === 'walk' ? 'This crab will scuttle sideways along the seabed. The shark and hook leave it alone.' : preview.kind === 'plant' ? 'This plant will stay anchored on the seabed.' : preview.kind === 'submarine' ? 'This submarine will cruise through the water. Sharks leave it alone.' : 'This fish will swim through the reef.'} Check the preview; choose a clearer photo if part of the drawing is missing.</p>
           <fieldset className="drawing-size" disabled={busy}>
             <legend className="field-label">How big in the reef?</legend>
@@ -133,7 +158,7 @@ export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }
             value={name} disabled={busy} onChange={(event) => setName(event.target.value)} />
         </>}
         {submitError && <p className="error" role="alert">{submitError}</p>}
-        <button className="button button-primary release-button" onClick={release} disabled={!preview || busy || changed}>
+        <button className="button button-primary release-button" onClick={release} disabled={!rotatedPreview || rotating || busy || changed}>
           {busy ? 'Joining the aquarium…' : preview?.kind === 'plant' ? 'Plant on the seabed' : 'Release into the reef'} <span aria-hidden="true">↗</span>
         </button>
         <button className="text-button choose-again" onClick={onCancel} disabled={busy}>Choose a different photo</button>

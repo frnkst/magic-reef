@@ -76,6 +76,26 @@ export async function prepareFish(image: HTMLImageElement, token: string | null,
   return extractDrawing(edited, parseAnalysis(data.analysis));
 }
 
+export async function rotateDrawing(drawing: Omit<Fish, 'id' | 'name'>, turns: number): Promise<Omit<Fish, 'id' | 'name'>> {
+  const quarterTurns = ((turns % 4) + 4) % 4;
+  if (!quarterTurns) return drawing;
+  const image = new Image();
+  image.src = drawing.image;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = quarterTurns % 2 ? image.naturalHeight : image.naturalWidth;
+  canvas.height = quarterTurns % 2 ? image.naturalWidth : image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Your browser does not support image rotation.');
+  context.translate(canvas.width / 2, canvas.height / 2);
+  context.rotate(quarterTurns * Math.PI / 2);
+  context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+  const rotated = canvas.toDataURL('image/png');
+  if (rotated.length > 700_000) throw new Error('The rotated cutout is too large to save. Choose a clearer photo.');
+  return { ...drawing, image: rotated, aspect: canvas.width / canvas.height,
+    facing: quarterTurns === 2 ? (drawing.facing === 'right' ? 'left' : 'right') : drawing.facing };
+}
+
 export function extractDrawing(image: HTMLImageElement, analysis: FishAnalysis): Omit<Fish, 'id' | 'name'> {
   const width = image.naturalWidth;
   const height = image.naturalHeight;

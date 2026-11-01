@@ -75,9 +75,9 @@ export function createAnalysisHandler(settings: Settings) {
         const supabase = ownerDatabase(settings);
         const { error } = await supabase.rpc('claim_fish_analysis', { tank_token: body.token });
         if (error) {
-          if (error.code === 'P0001') throw new ApiError(429, error.message);
-          console.error('Fish analysis budget check failed', { code: error.code });
-          throw new ApiError(503, 'AI preparation is unavailable. Run supabase/ai.sql in the Supabase SQL Editor.');
+          if (error.code === 'P0001') throw new ApiError(404, error.message);
+          console.error('Fish analysis aquarium check failed', { code: error.code });
+          throw new ApiError(503, 'AI preparation is unavailable. Check the aquarium database setup.');
         }
       }
       const signal = AbortSignal.timeout(105_000);

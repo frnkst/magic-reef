@@ -36,7 +36,6 @@ const client = configured ? createClient(url, key, {
 }) : null;
 
 const DEMO_KEY = 'magic-reef-demo-fish';
-export const MAX_FISH = 40;
 
 export function readDemoFish(): Fish[] {
   const raw = localStorage.getItem(DEMO_KEY);
@@ -108,7 +107,6 @@ export async function loadFish(token: string, previous: Fish[]): Promise<Fish[]>
 export async function releaseFish(token: string | null, fish: Omit<Fish, 'id'>, demo: boolean): Promise<void> {
   if (demo) {
     const existing = readDemoFish();
-    if (existing.length >= MAX_FISH) throw new Error('This aquarium is full (40 drawings).');
     try {
       localStorage.setItem(DEMO_KEY, JSON.stringify([...existing, { ...fish, id: crypto.randomUUID() }]));
     } catch (error) {

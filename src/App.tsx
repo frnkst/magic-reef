@@ -6,7 +6,7 @@ import { ColoringPages } from './components/ColoringPages';
 import { AquariumSound } from './components/AquariumSound';
 import { sampleFish } from './lib/drawings';
 import { openPhoto } from './lib/cutout';
-import { configured, createTank, errorMessage, loadFish, MAX_FISH, readDemoFish, reefLink } from './lib/reef';
+import { configured, createTank, errorMessage, loadFish, readDemoFish, reefLink } from './lib/reef';
 import type { Fish } from './lib/reef';
 import { useOwner } from './lib/auth';
 import type { OwnerAccess } from './lib/auth';
@@ -207,7 +207,7 @@ export function App() {
   };
 
   if (upload) {
-    return <UploadPage owner={owner} childNames={childNames} connected={hasTank && (demo || configured)} syncError={syncError} synced={synced} count={fish.length} />;
+    return <UploadPage owner={owner} childNames={childNames} connected={hasTank && (demo || configured)} syncError={syncError} synced={synced} />;
   }
   if (params.get('view') === 'coloring') return <ColoringPages />;
 
@@ -327,8 +327,8 @@ export function App() {
   </main>;
 }
 
-function UploadPage({ owner, childNames, connected, syncError, synced, count }: {
-  owner: OwnerAccess; childNames: string[]; connected: boolean; syncError: string; synced: boolean; count: number;
+function UploadPage({ owner, childNames, connected, syncError, synced }: {
+  owner: OwnerAccess; childNames: string[]; connected: boolean; syncError: string; synced: boolean;
 }) {
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [error, setError] = useState('');
@@ -377,7 +377,7 @@ function UploadPage({ owner, childNames, connected, syncError, synced, count }: 
         <div className="capture-illustration" aria-hidden="true">
           <svg viewBox="0 0 240 180"><g transform="rotate(-8 120 90)"><rect x="37" y="17" width="165" height="145" rx="3" fill="#fffdf5" stroke="#d9d6c3" strokeWidth="2"/><path d="m149 92 31-25-2 48-29-17M61 92c18-39 67-37 93 1-25 38-72 35-93-1Z" fill="#f4be75" stroke="#986f43" strokeWidth="3"/><path d="m110 61-6 61m25-52-6 45" stroke="#da9259" strokeWidth="6"/><circle cx="82" cy="84" r="5" fill="#624a37"/></g><path d="m205 33 5-11m5 18 12-2M31 127l-12 4" stroke="#7b9c83" strokeWidth="3" strokeLinecap="round"/></svg>
         </div>
-        {count >= MAX_FISH ? <p className="error">This aquarium is full (40 drawings).</p> : <>
+        <>
           <label className={`button button-primary camera-button${loading ? ' disabled' : ''}`}>
             {loading ? 'Opening your photo…' : 'Take a photo'} <span aria-hidden="true">↗</span>
             <input type="file" accept="image/*" capture="environment" disabled={loading || (!demo && !synced)}
@@ -387,7 +387,7 @@ function UploadPage({ owner, childNames, connected, syncError, synced, count }: 
             <input type="file" accept="image/*" disabled={loading || (!demo && !synced)}
               onChange={(event) => { void choose(event.target.files?.[0]); event.target.value = ''; }} />
           </label>
-        </>}
+        </>
         <p className="photo-tip"><strong>Fish, submarines, or plants</strong>Use plain white paper and a closed, dark outline. Photograph one drawing from straight above in good light, with no hands or other drawings in the frame.</p>
         <a className="text-button" href="/?view=coloring" target="_blank" rel="noreferrer">Need something to color? Print a sheet ↗</a>
         <p className="privacy-note">Selecting a photo sends a resized copy to OpenRouter and its AI provider to identify the drawing. Avoid faces and personal details. You approve the cutout before it is saved in the aquarium.</p>
