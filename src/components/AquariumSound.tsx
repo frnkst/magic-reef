@@ -3,7 +3,7 @@ import { errorMessage } from '../lib/reef';
 
 interface SoundSession {
   context: AudioContext;
-  noise: AudioBufferSourceNode;
+  source: AudioBufferSourceNode | null;
 }
 
 export function AquariumSound() {
@@ -16,7 +16,8 @@ export function AquariumSound() {
     return () => {
       const sound = session.current;
       if (!sound) return;
-      sound.noise.stop();
+      session.current = null;
+      sound.source?.stop();
       void sound.context.close().catch((cause: unknown) => {
         console.error('Could not close aquarium audio:', cause);
       });
@@ -46,41 +47,39 @@ export function AquariumSound() {
       if (!session.current) {
         if (!window.AudioContext) throw new Error('This browser does not support aquarium sound.');
         const context = new AudioContext();
+        const sound: SoundSession = { context, source: null };
+        session.current = sound;
+        // Unlock audio during the click, before waiting for the recording.
+        await context.resume();
+        const response = await fetch('/aquarium-water.wav', { signal: AbortSignal.timeout(30_000) });
+        if (!response.ok) throw new Error('The water recording could not be loaded. Please try again.');
+        const buffer = await context.decodeAudioData(await response.arrayBuffer());
+        if (session.current !== sound) return;
         const output = context.createGain();
-        output.gain.value = 0.55;
+        output.gain.value = 0.7;
         output.connect(context.destination);
-        const buffer = context.createBuffer(1, context.sampleRate * 12, context.sampleRate);
-        const samples = buffer.getChannelData(0);
-        let flow = 0;
-        let ripple = 0;
-        for (let index = 0; index < samples.length; index++) {
-          const white = Math.random() * 2 - 1;
-          flow = (flow + white * 0.02) / 1.02;
-          ripple = ripple * 0.99995 + Math.random() * 0.0001;
-          samples[index] = (flow * 3.5 + white * 0.12) * (0.65 + ripple * 0.35);
-        }
-        const noise = context.createBufferSource();
-        noise.buffer = buffer;
-        noise.loop = true;
-        const filter = context.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 1800;
-        filter.Q.value = 0.5;
-        const lowCut = context.createBiquadFilter();
-        lowCut.type = 'highpass';
-        lowCut.frequency.value = 160;
-        lowCut.Q.value = 0.5;
-        const water = context.createGain();
-        water.gain.value = 0.3;
-        noise.connect(lowCut).connect(filter).connect(water).connect(output);
-        noise.start();
-        session.current = { context, noise };
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        source.connect(output);
+        sound.source = source;
+        source.start();
       }
+      if (!session.current) return;
       const context = session.current.context;
-      if (enabled) await context.suspend();
+      if (enabled || document.hidden) await context.suspend();
       else await context.resume();
       setEnabled(!enabled);
     } catch (cause) {
+      const sound = session.current;
+      session.current = null;
+      sound?.source?.stop();
+      if (sound) {
+        void sound.context.close().catch((error: unknown) => {
+          console.error('Could not close failed aquarium audio:', error);
+        });
+      }
+      setEnabled(false);
       setError(`Could not play aquarium sound: ${errorMessage(cause)}`);
     } finally {
       setBusy(false);

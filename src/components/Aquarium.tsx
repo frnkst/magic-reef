@@ -161,10 +161,24 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     observer.observe(element);
     resize();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const sharkGeometry = new THREE.PlaneGeometry(3.6, 1.8);
+    const sharkGeometry = new THREE.PlaneGeometry(3.6, 1.8, 32, 8);
+    const sharkSwimTime = { value: 0 };
+    const sharkSwimMotion = { value: 1 };
     const sharkMaterial = new THREE.MeshBasicMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
     });
+    sharkMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms.sharkSwimTime = sharkSwimTime;
+      shader.uniforms.sharkSwimMotion = sharkSwimMotion;
+      shader.vertexShader = `uniform float sharkSwimTime;
+        uniform float sharkSwimMotion;\n${shader.vertexShader}`.replace('#include <begin_vertex>', `
+        #include <begin_vertex>
+        float tail = 1.0 - uv.x;
+        transformed.y += sin(sharkSwimTime * 3.8 + tail * 5.0) * tail * tail * 0.12 * sharkSwimMotion;
+        transformed.x += sin(sharkSwimTime * 3.8 + tail * 5.0 + 1.0) * tail * tail * 0.018 * sharkSwimMotion;
+      `);
+    };
+    sharkMaterial.customProgramCacheKey = () => 'magic-reef-shark-swimming';
     const shark = new THREE.Mesh(sharkGeometry, sharkMaterial);
     shark.position.set(0, 1.4, 1);
     shark.visible = false;
@@ -215,6 +229,63 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     let chompAt = -10;
     let nextBlinkAt = 4 + Math.random() * 5;
     let blinkUntil = 0;
+    const fishingRig = new THREE.Group();
+    fishingRig.name = 'fishing-rig';
+    fishingRig.visible = false;
+    fishingRig.position.z = 1.5;
+    scene.add(fishingRig);
+    const hookMaterial = new THREE.MeshBasicMaterial({ color: '#c9ddd9', depthWrite: false });
+    const wormMaterial = new THREE.MeshBasicMaterial({ color: '#ed9e88', depthWrite: false });
+    const hookCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0.6, 0), new THREE.Vector3(0, -0.15, 0),
+      new THREE.Vector3(0.16, -0.4, 0), new THREE.Vector3(0.4, -0.35, 0),
+      new THREE.Vector3(0.43, 0.05, 0),
+    ]);
+    const hookGeometry = new THREE.TubeGeometry(hookCurve, 32, 0.025, 6, false);
+    fishingRig.add(new THREE.Mesh(hookGeometry, hookMaterial));
+    const barbGeometry = new THREE.ConeGeometry(0.05, 0.15, 6);
+    const barb = new THREE.Mesh(barbGeometry, hookMaterial);
+    barb.position.set(0.41, 0.02, 0);
+    barb.rotation.z = 0.3;
+    fishingRig.add(barb);
+    const wormCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.1, -0.22, 0.05), new THREE.Vector3(0.1, -0.1, 0.05),
+      new THREE.Vector3(0.32, -0.25, 0.05), new THREE.Vector3(0.5, -0.16, 0.05),
+      new THREE.Vector3(0.6, -0.4, 0.05),
+    ]);
+    const wormGeometry = new THREE.TubeGeometry(wormCurve, 32, 0.06, 8, false);
+    const worm = new THREE.Mesh(wormGeometry, wormMaterial);
+    worm.name = 'fishing-worm';
+    fishingRig.add(worm);
+    const lineGeometry = new THREE.PlaneGeometry(0.012, 1);
+    const lineMaterial = new THREE.MeshBasicMaterial({
+      color: '#e9f1db', transparent: true, opacity: 0.65, depthWrite: false,
+    });
+    const fishingLine = new THREE.Mesh(lineGeometry, lineMaterial);
+    fishingLine.name = 'fishing-line';
+    fishingLine.position.z = 1.4;
+    fishingLine.visible = false;
+    scene.add(fishingLine);
+    let fishingPhase: 'idle' | 'lowering' | 'waiting' | 'lifting' = 'idle';
+    let fishingTargetId: string | null = null;
+    let nextFishingAt = 25 + Math.random() * 25;
+    let fishingPhaseAt = 0;
+    let fishingX = 0;
+    let fishingDepth = 0;
+    let fishingLiftFrom = 0;
+    let fishingWillCatch = false;
+    const finishFishing = () => {
+      const caught = fishingTargetId ? current.swimmers.get(fishingTargetId) : undefined;
+      if (caught && fishingPhase === 'lifting') {
+        caught.eatenAt = elapsed - 0.5;
+        caught.mesh.visible = false;
+      }
+      fishingPhase = 'idle';
+      fishingTargetId = null;
+      fishingRig.visible = false;
+      fishingLine.visible = false;
+      nextFishingAt = elapsed + 30 + Math.random() * 45;
+    };
     const mouth = new THREE.Vector3();
     let elapsed = 0;
     let previousTime = performance.now();
@@ -224,6 +295,54 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
       if (!document.hidden) elapsed += delta;
       backgroundMaterial.uniforms.time.value = elapsed;
       backgroundMaterial.uniforms.motion.value = reducedMotion.matches ? 0 : 1;
+      sharkSwimTime.value = elapsed;
+      sharkSwimMotion.value = reducedMotion.matches ? 0 : 1;
+      if (fishingPhase === 'idle' && elapsed >= nextFishingAt) {
+        fishingPhase = 'lowering';
+        fishingPhaseAt = elapsed;
+        fishingX = (Math.random() - 0.5) * current.width * 0.65;
+        fishingDepth = -0.8 + Math.random() * 2.4;
+        fishingWillCatch = Math.random() < 0.65;
+        fishingRig.visible = true;
+        fishingLine.visible = true;
+        worm.visible = true;
+      }
+      if (fishingPhase !== 'idle') {
+        const travelTime = reducedMotion.matches ? 6 : 3;
+        const progress = Math.min(1, (elapsed - fishingPhaseAt) / travelTime);
+        const eased = progress * progress * (3 - 2 * progress);
+        const bound = Math.max(0, current.width / 2 - 0.7);
+        fishingRig.position.x = THREE.MathUtils.clamp(fishingX, -bound, bound);
+        if (fishingPhase === 'lowering') {
+          fishingRig.position.y = THREE.MathUtils.lerp(6, fishingDepth, eased);
+          if (progress === 1) {
+            fishingPhase = 'waiting';
+            fishingPhaseAt = elapsed;
+          }
+        } else if (fishingPhase === 'waiting') {
+          fishingRig.position.y = fishingDepth;
+          if (fishingWillCatch && !fishingTargetId && elapsed - fishingPhaseAt > 2) {
+            const candidates = [...current.swimmers.values()].filter((swimmer) =>
+              (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.eatenAt === null && swimmer.fish.id !== targetId);
+            const choice = candidates[Math.floor(Math.random() * candidates.length)];
+            if (choice) fishingTargetId = choice.fish.id;
+          }
+          if (fishingTargetId && !current.swimmers.has(fishingTargetId)) fishingTargetId = null;
+          if (elapsed - fishingPhaseAt > 16) {
+            fishingTargetId = null;
+            fishingPhase = 'lifting';
+            fishingPhaseAt = elapsed;
+            fishingLiftFrom = fishingRig.position.y;
+          }
+        } else {
+          fishingRig.position.y = THREE.MathUtils.lerp(fishingLiftFrom, 6.5, eased);
+          if (progress === 1) finishFishing();
+        }
+        const lineLength = Math.max(0.01, 7 - fishingRig.position.y - 0.6);
+        fishingLine.scale.y = lineLength;
+        fishingLine.position.set(fishingRig.position.x, 7 - lineLength / 2, 1.4);
+        worm.rotation.z = reducedMotion.matches ? 0 : Math.sin(elapsed * 3) * 0.08;
+      }
       for (const swimmer of current.swimmers.values()) {
         const { mesh, height, fish: drawing } = swimmer;
         const kind = drawing.kind ?? 'fish';
@@ -253,6 +372,37 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             if (appearance === 1) swimmer.eatenAt = null;
           }
         }
+        if (swimmer.fish.id === fishingTargetId && fishingPhase !== 'idle') {
+          const baitX = fishingRig.position.x + 0.3;
+          const baitY = fishingRig.position.y - 0.2;
+          const direction = Math.sign(baitX - mesh.position.x) || swimmer.direction;
+          const headOffset = height * drawing.aspect * fit * 0.38;
+          if (fishingPhase === 'waiting') {
+            const dx = baitX - direction * headOffset - mesh.position.x;
+            const dy = baitY - mesh.position.y;
+            const distance = Math.hypot(dx, dy);
+            const step = Math.min(distance, delta * (reducedMotion.matches ? 1 : 1.8));
+            if (distance > 0) {
+              mesh.position.x += dx / distance * step;
+              mesh.position.y += dy / distance * step;
+            }
+            if (distance < 0.15) {
+              fishingPhase = 'lifting';
+              fishingPhaseAt = elapsed;
+              fishingLiftFrom = fishingRig.position.y;
+              worm.visible = false;
+            }
+            swimmer.direction = direction;
+          }
+          if (fishingPhase === 'lifting') {
+            mesh.position.set(baitX - swimmer.direction * headOffset, baitY, 1.6);
+          }
+          mesh.scale.set(swimmer.direction * (drawing.facing === 'right' ? 1 : -1) * fit, fit, 1);
+          mesh.rotation.z = 0;
+          mesh.material.uniforms.opacity.value = 1;
+          mesh.material.uniforms.time.value = reducedMotion.matches ? 0 : elapsed;
+          continue;
+        }
         const bound = Math.max(0.1, current.width / 2 - height * drawing.aspect * fit / 2 - 0.12);
         mesh.position.x += delta * swimmer.speed * swimmer.direction * (reducedMotion.matches ? 0.3 : 1);
         if (mesh.position.x > bound) {
@@ -272,6 +422,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         mesh.position.y = swimmer.baseY + Math.sin(elapsed * (kind === 'submarine' ? 0.3 : 0.55) + swimmer.phase) * (kind === 'submarine' ? 0.1 : 0.2);
         mesh.rotation.z = Math.sin(elapsed * 0.75 + swimmer.phase) * (reducedMotion.matches ? 0 : kind === 'submarine' ? 0.012 : 0.035);
         mesh.material.uniforms.time.value = reducedMotion.matches ? 0 : elapsed;
+        mesh.position.z = (swimmer.phase / 1.73 % 5) * 0.1;
       }
       if (shark.visible) {
         const sharkFit = Math.min(1, current.width * 0.55 / 3.6);
@@ -285,7 +436,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           nextHuntAt = elapsed + 20 + Math.random() * 25;
         }
         if (!targetId && elapsed >= nextHuntAt) {
-          const candidates = [...current.swimmers.values()].filter((swimmer) => (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.eatenAt === null);
+          const candidates = [...current.swimmers.values()].filter((swimmer) => (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.eatenAt === null && swimmer.fish.id !== fishingTargetId);
           const choice = candidates[Math.floor(Math.random() * candidates.length)];
           if (choice) {
             target = choice;
@@ -363,6 +514,13 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
       sharkMaterial.dispose();
       sharkTexture?.dispose();
       sharkBlinkTexture?.dispose();
+      hookGeometry.dispose();
+      barbGeometry.dispose();
+      wormGeometry.dispose();
+      lineGeometry.dispose();
+      hookMaterial.dispose();
+      wormMaterial.dispose();
+      lineMaterial.dispose();
       renderer.dispose();
       renderer.domElement.remove();
       if (state.current === current) state.current = null;
@@ -461,7 +619,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
   }, [fish, onError]);
 
   return (
-    <div className="aquarium" role="img" aria-label={`An underwater aquarium with ${fish.length} paper drawings, cruising submarines, stationary plants, and a playful circling shark. Gulped fish return after 15 seconds.`}>
+    <div className="aquarium" role="img" aria-label={`An underwater aquarium with ${fish.length} paper drawings, cruising submarines, stationary plants, a playful circling shark, and an occasional fishing hook with a worm. Gulped and caught fish return after a 15-second break.`}>
       <img className="reef-background" src="/reef-background.jpg" alt="" onError={() => {
         onError('The reef background could not be loaded. Reload the aquarium to try again.');
       }} />

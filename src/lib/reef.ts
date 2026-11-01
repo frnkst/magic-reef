@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { ownerRequest } from './auth';
 
 export type DrawingKind = 'fish' | 'submarine' | 'plant';
 
@@ -9,6 +10,7 @@ export interface Fish {
   aspect: number;
   facing: 'left' | 'right';
   kind?: DrawingKind;
+  child?: string;
 }
 
 interface FishSummary {
@@ -17,6 +19,7 @@ interface FishSummary {
   aspect: number;
   facing: 'left' | 'right';
   kind: DrawingKind;
+  child: string;
 }
 
 const url = import.meta.env.VITE_SUPABASE_URL;
@@ -53,20 +56,22 @@ function isFish(value: unknown): value is Fish {
     && typeof fish.image === 'string' && fish.image.startsWith('data:image/png;base64,')
     && typeof fish.aspect === 'number' && fish.aspect >= 0.2 && fish.aspect <= 5
     && (fish.facing === 'left' || fish.facing === 'right')
-    && (fish.kind === undefined || fish.kind === 'fish' || fish.kind === 'submarine' || fish.kind === 'plant');
+    && (fish.kind === undefined || fish.kind === 'fish' || fish.kind === 'submarine' || fish.kind === 'plant')
+    && (fish.child === undefined || (typeof fish.child === 'string' && fish.child.length <= 40));
 }
 
 export async function createTank(): Promise<string> {
   if (!client) throw new Error('Connect Supabase to create a shared aquarium. The local demo works without it.');
-  const { data, error } = await client.rpc('create_tank');
-  if (error) throw new Error(`Could not create the aquarium: ${error.message}`);
-  if (typeof data !== 'string') throw new Error('The server returned an invalid aquarium link.');
-  return data;
+  const result = await ownerRequest('/api/tanks', {});
+  if (!result || typeof result !== 'object' || !('token' in result) || typeof result.token !== 'string') {
+    throw new Error('The server returned an invalid aquarium link.');
+  }
+  return result.token;
 }
 
 export async function loadFish(token: string, previous: Fish[]): Promise<Fish[]> {
   if (!client) throw new Error('Supabase is not configured. Add the environment variables and redeploy.');
-  const { data, error } = await client.rpc('list_drawings', { tank_token: token });
+  const { data, error } = await client.rpc('list_party_drawings', { tank_token: token });
   if (error) throw new Error(`Could not sync the aquarium: ${error.message}`);
   if (!Array.isArray(data) || !data.every((entry: unknown) => {
     if (!entry || typeof entry !== 'object') return false;
@@ -74,13 +79,14 @@ export async function loadFish(token: string, previous: Fish[]): Promise<Fish[]>
     return typeof value.id === 'string' && typeof value.name === 'string'
       && typeof value.aspect === 'number' && value.aspect >= 0.2 && value.aspect <= 5
       && (value.facing === 'left' || value.facing === 'right')
-      && (value.kind === 'fish' || value.kind === 'submarine' || value.kind === 'plant');
+      && (value.kind === 'fish' || value.kind === 'submarine' || value.kind === 'plant')
+      && typeof value.child === 'string' && value.child.length <= 40;
   })) throw new Error('The server returned an invalid drawing list.');
   const summaries = data as FishSummary[];
   const known = new Map(previous.map((fish) => [fish.id, fish]));
   return Promise.all(summaries.map(async (summary) => {
     const existing = known.get(summary.id);
-    if (existing) return { ...existing, kind: summary.kind };
+    if (existing) return { ...existing, kind: summary.kind, child: summary.child };
     const result = await client.rpc('get_fish_image', { tank_token: token, fish_id: summary.id });
     if (result.error) throw new Error(`Could not load ${summary.name}: ${result.error.message}`);
     const fish = { ...summary, image: result.data };
@@ -104,22 +110,21 @@ export async function releaseFish(token: string | null, fish: Omit<Fish, 'id'>, 
     return;
   }
   if (!client || !token) throw new Error('This upload link is not connected to an aquarium.');
-  const { error } = await client.rpc('add_drawing', {
-    tank_token: token,
-    fish_name: fish.name,
-    fish_image: fish.image,
-    fish_aspect: fish.aspect,
-    fish_facing: fish.facing,
-    drawing_kind: fish.kind ?? 'fish',
+  const result = await ownerRequest('/api/drawings', {
+    token, name: fish.name, image: fish.image, aspect: fish.aspect,
+    facing: fish.facing, kind: fish.kind ?? 'fish', childName: fish.child ?? '',
   });
-  if (error) throw new Error(`Your drawing could not be added: ${error.message}`);
+  if (!result || typeof result !== 'object' || !('saved' in result) || result.saved !== true) {
+    throw new Error('The server did not confirm the drawing was saved.');
+  }
 }
 
-export function reefLink(token: string | null, demo: boolean, upload = false): string {
+export function reefLink(token: string | null, demo: boolean, upload = false, child = ''): string {
   const link = new URL(window.location.origin);
   if (demo) link.searchParams.set('demo', '1');
   else if (token) link.searchParams.set('tank', token);
   if (upload) link.searchParams.set('view', 'upload');
+  else if (child) link.searchParams.set('child', child);
   return link.toString();
 }
 

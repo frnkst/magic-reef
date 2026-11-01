@@ -8,6 +8,8 @@ import { sampleFish } from './lib/drawings';
 import { openPhoto } from './lib/cutout';
 import { configured, createTank, errorMessage, loadFish, MAX_FISH, readDemoFish, reefLink } from './lib/reef';
 import type { Fish } from './lib/reef';
+import { useOwner } from './lib/auth';
+import type { OwnerAccess } from './lib/auth';
 
 const lastTankKey = 'magic-reef-last-tank';
 const tankTokenPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -28,7 +30,15 @@ function Logo({ light = false }: { light?: boolean }) {
   </a>;
 }
 
+function OwnerButton({ owner, light = false }: { owner: OwnerAccess; light?: boolean }) {
+  return <button className={light ? 'glass-button owner-button' : 'text-button owner-button'} disabled={owner.loading}
+    onClick={() => { void (owner.signedIn ? owner.signOut() : owner.signIn()); }}>
+    {owner.loading ? 'Checking login…' : owner.signedIn ? 'Sign out' : 'Owner login'}
+  </button>;
+}
+
 export function App() {
+  const owner = useOwner();
   const [samples, setSamples] = useState<Fish[]>([]);
   const [fish, setFish] = useState<Fish[]>([]);
   const [syncError, setSyncError] = useState('');
@@ -36,15 +46,29 @@ export function App() {
   const [synced, setSynced] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
-  const [invite, setInvite] = useState(true);
+  const [invite, setInvite] = useState(false);
   const [qr, setQr] = useState('');
   const [qrError, setQrError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [immersive, setImmersive] = useState(false);
   const [savedTank, setSavedTank] = useState<string | null>(null);
+  const [childFilter, setChildFilter] = useState((params.get('child') ?? '').slice(0, 40));
   const previous = useRef<Fish[]>([]);
   const graphicsFailure = useCallback((message: string) => setGraphicsError(message), []);
   const phoneLink = reefLink(token, demo, true);
+  const publicLink = reefLink(token, demo, false, childFilter);
+  const allDrawings = demo ? [...samples, ...fish] : fish;
+  const childNames = [...new Map(allDrawings.filter((drawing) => drawing.child?.trim())
+    .map((drawing) => [drawing.child!.trim().toLocaleLowerCase(), drawing.child!.trim()])).values()]
+    .sort((a, b) => a.localeCompare(b));
+  const filterByChild = (value: string) => {
+    setChildFilter(value);
+    setCopyStatus('');
+    const link = new URL(window.location.href);
+    if (value) link.searchParams.set('child', value);
+    else link.searchParams.delete('child');
+    window.history.replaceState(null, '', link);
+  };
 
   useEffect(() => {
     let active = true;
@@ -105,7 +129,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!hasTank || demo || upload) return;
+    if (!hasTank || demo || upload || !owner.allowed) return;
     let active = true;
     QRCode.toDataURL(phoneLink, {
       width: 220, margin: 2, color: { dark: '#123e43', light: '#fff8eb' },
@@ -116,7 +140,7 @@ export function App() {
       if (active) setQrError(`Could not make the QR code: ${errorMessage(error)}. Use the link below.`);
     });
     return () => { active = false; };
-  }, [phoneLink]);
+  }, [phoneLink, owner.allowed]);
 
   useEffect(() => {
     const changed = () => setImmersive(Boolean(document.fullscreenElement));
@@ -126,6 +150,7 @@ export function App() {
 
   const start = async () => {
     if (starting) return;
+    if (!owner.allowed) { await owner.signIn(); return; }
     setStarting(true);
     setStartError('');
     try {
@@ -141,12 +166,23 @@ export function App() {
       setStarting(false);
     }
   };
-  const copyLink = async () => {
+  const copyLink = async (link = publicLink) => {
     try {
-      await navigator.clipboard.writeText(phoneLink);
+      await navigator.clipboard.writeText(link);
       setCopyStatus('Link copied');
     } catch {
       setCopyStatus('Copy was blocked. Select and copy the link below.');
+    }
+  };
+  const share = async () => {
+    setCopyStatus('');
+    if (!navigator.share) { await copyLink(); return; }
+    try {
+      await navigator.share({ title: 'Magic Reef', text: childFilter ? `${childFilter}’s drawings have joined the reef!` : 'Our birthday-party drawings have come to life!', url: publicLink });
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        setCopyStatus(`Sharing was blocked: ${errorMessage(error)}. Use Copy aquarium link instead.`);
+      }
     }
   };
   const fullscreen = async () => {
@@ -169,7 +205,7 @@ export function App() {
   };
 
   if (upload) {
-    return <UploadPage connected={hasTank && (demo || configured)} syncError={syncError} synced={synced} count={fish.length} />;
+    return <UploadPage owner={owner} childNames={childNames} connected={hasTank && (demo || configured)} syncError={syncError} synced={synced} count={fish.length} />;
   }
   if (params.get('view') === 'coloring') return <ColoringPages />;
 
@@ -179,7 +215,7 @@ export function App() {
 
   if (!hasTank) {
     return <main className="landing">
-      <header className="landing-header"><Logo /><a className="text-button" href="/?view=coloring">Print coloring sheets ↗</a></header>
+      <header className="landing-header"><Logo /><div className="landing-nav"><a className="text-button" href="/?view=coloring">Print coloring sheets ↗</a><OwnerButton owner={owner} /></div></header>
       <div className="landing-body">
         <section className="intro">
           <span className="eyebrow"><span className="little-star" aria-hidden="true">✳</span> A little ocean for big imaginations</span>
@@ -187,14 +223,15 @@ export function App() {
           <p>A fish, a few crayons, a little magic.<br />Let your children’s drawings swim in an aquarium of their very own.</p>
           <div className="intro-actions">
             {savedTank && configured && <a className="button button-primary resume-link" href={reefLink(savedTank, false)}>Open your aquarium <span aria-hidden="true">↗</span></a>}
-            <button className={`button ${savedTank && configured ? 'button-secondary' : 'button-primary'}`} onClick={start} disabled={starting || !configured}>
-              {starting ? 'Making room in the ocean…' : savedTank && configured ? 'Create another aquarium' : 'Create an aquarium'} <span aria-hidden="true">↗</span>
+            <button className={`button ${savedTank && configured ? 'button-secondary' : 'button-primary'}`} onClick={start} disabled={starting || !configured || owner.loading}>
+              {starting ? 'Making room in the ocean…' : !owner.allowed ? 'Owner login to create a reef' : savedTank && configured ? 'Create another aquarium' : 'Create an aquarium'} <span aria-hidden="true">↗</span>
             </button>
             <a className="text-button" href="/?demo=1">Try the local demo →</a>
             {savedTank && configured && <p className="saved-link-note">Your aquarium link is saved on this browser.</p>}
           </div>
           {!configured && <p className="setup-note">The demo is ready. To connect a phone and laptop, add the Supabase keys described in the README.</p>}
           {startError && <p className="error" role="alert">{startError}</p>}
+          {owner.error && <p className="error" role="alert">{owner.error}</p>}
           <div className="intro-bottom"><span className="scribble" aria-hidden="true">〰</span><span>No special templates. No perfect drawings.<br />Just their imagination, exactly as it is.</span></div>
         </section>
         <section className="landing-reef" aria-label="A preview of your paper aquarium">
@@ -213,7 +250,7 @@ export function App() {
     </main>;
   }
 
-  const displayed = demo ? [...samples, ...fish] : fish;
+  const displayed = childFilter ? allDrawings.filter((drawing) => drawing.child?.trim().toLocaleLowerCase() === childFilter.trim().toLocaleLowerCase()) : allDrawings;
   const submarineCount = displayed.filter((drawing) => drawing.kind === 'submarine').length;
   const plantCount = displayed.filter((drawing) => drawing.kind === 'plant').length;
   return <main className={`tank-page${immersive ? ' immersive' : ''}`}>
@@ -222,36 +259,52 @@ export function App() {
       <Logo light />
       <div className="tank-tools">
         <AquariumSound />
-        <button className="glass-button" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide' : 'Add a drawing'} <span aria-hidden="true">＋</span></button>
+        <button className="glass-button" onClick={() => setInvite((value) => !value)}>{invite ? 'Hide panel' : 'Share reef'} <span aria-hidden="true">↗</span></button>
+        <OwnerButton owner={owner} light />
         <button className="glass-button fullscreen-button" onClick={fullscreen}>Full screen <span aria-hidden="true">⛶</span></button>
       </div>
     </header>
+    {(childNames.length > 0 || childFilter) && <div className="reef-filter">
+      <label htmlFor="reef-child">Whose drawings?</label>
+      <select id="reef-child" value={childFilter} onChange={(event) => filterByChild(event.target.value)}>
+        <option value="">Everyone’s reef</option>
+        {childFilter && !childNames.includes(childFilter) && <option value={childFilter}>{childFilter}</option>}
+        {childNames.map((name) => <option key={name} value={name}>{name}</option>)}
+      </select>
+      {childFilter && <button className="glass-button" onClick={() => filterByChild('')}>Show everyone</button>}
+    </div>}
     {invite && <aside className="invite-card">
-      <span className="eyebrow">{demo ? 'A little practice ocean' : 'The next drawing is yours'}</span>
-      <h1>Bring a drawing<br /><em>to life.</em></h1>
+      <span className="eyebrow">{demo ? 'A little practice ocean' : 'A little ocean to share'}</span>
+      <h1>{childFilter ? <>{childFilter}’s<br /><em>little reef.</em></> : <>Send a little<br /><em>sea magic.</em></>}</h1>
       {demo ? <>
         <p>This demo lives in this browser only. AI uploads work locally with an OpenRouter key; deployed uploads need a shared aquarium.</p>
-        <a className="button button-primary" href={phoneLink}>Add a drawing <span aria-hidden="true">↗</span></a>
+        {owner.allowed && <a className="button button-primary" href={phoneLink}>Add a drawing <span aria-hidden="true">↗</span></a>}
         <p className="field-hint">The three starter fish are original sample drawings.</p>
       </> : <>
-        <p>Scan with your phone. Add a fish, submarine, or plant. Watch your artwork join the reef.</p>
-        <div className="qr-code">{qr ? <img src={qr} width="180" height="180" alt="QR code to add a drawing from your phone" /> : <span>{qrError || 'Preparing your phone link…'}</span>}</div>
-        <a className="phone-link" href={phoneLink}>Or add a drawing on this device ↗</a>
-        <button className="text-button copy-button" onClick={copyLink}>Copy phone link</button>
+        <p>Parents can watch without signing in. Choose a child’s name to see their drawings, or enjoy everyone’s reef.</p>
+        <button className="button button-primary" onClick={() => { void copyLink(); }}>Copy aquarium link <span aria-hidden="true">↗</span></button>
+        <button className="button button-secondary" onClick={() => { void share(); }}>Send to parents <span aria-hidden="true">↗</span></button>
         <span className="copy-status" role="status">{copyStatus}</span>
-        <input className="share-link" aria-label="Phone upload link" value={phoneLink} readOnly onFocus={(event) => event.target.select()} />
-        <p className="privacy-note">Keep this link in your family. Anyone with it can view this aquarium and add drawings.</p>
+        <input className="share-link" aria-label="Public aquarium viewing link" value={publicLink} readOnly onFocus={(event) => event.target.select()} />
+        <p className="privacy-note">{childFilter ? 'This link opens the selected child’s drawings. Parents can still switch to everyone.' : 'This link opens the whole aquarium.'} Anyone with the link can view the drawings and first names. Only the signed-in owner can add drawings.</p>
+        {owner.allowed && <div className="owner-upload">
+          <span className="eyebrow">Owner’s drawing station</span>
+          <div className="qr-code">{qr ? <img src={qr} width="180" height="180" alt="QR code for the owner to upload from a phone" /> : <span>{qrError || 'Preparing your phone link…'}</span>}</div>
+          <a className="button button-primary" href={phoneLink}>Add a drawing <span aria-hidden="true">＋</span></a>
+          <button className="text-button copy-button" onClick={() => { void copyLink(phoneLink); }}>Copy owner upload link</button>
+        </div>}
       </>}
     </aside>}
-    {!demo && synced && fish.length === 0 && <div className="empty-reef"><span className="little-star" aria-hidden="true">✳</span><h2>Every ocean starts<br />with one little fish.</h2><p>Draw yours. We’ll keep the water warm.</p></div>}
+    {!demo && synced && displayed.length === 0 && <div className="empty-reef"><span className="little-star" aria-hidden="true">✳</span><h2>{childFilter ? <>No drawings for<br />{childFilter} yet.</> : <>Every ocean starts<br />with one little fish.</>}</h2><p>{childFilter ? 'Choose Everyone’s reef to see the party aquarium.' : 'The owner can add the first little masterpiece.'}</p></div>}
     <footer className="tank-footer">
       <span className="tank-status"><span className={`status-dot${!synced ? ' status-pending' : ''}`} />{demo ? 'Local demo · this browser only' : synced ? 'Connected · waiting for little masterpieces' : 'Reconnecting…'}</span>
-      <span>{displayed.length - submarineCount - plantCount} fish · {submarineCount} submarine{submarineCount === 1 ? '' : 's'} · {plantCount} plant{plantCount === 1 ? '' : 's'}</span>
+      <span>{childFilter && `${childFilter} · `}{displayed.length - submarineCount - plantCount} fish · {submarineCount} submarine{submarineCount === 1 ? '' : 's'} · {plantCount} plant{plantCount === 1 ? '' : 's'}</span>
     </footer>
-    {(syncError || graphicsError || startError) && <div className="tank-errors" role="alert">
+    {(syncError || graphicsError || startError || owner.error) && <div className="tank-errors" role="alert">
       {syncError && <p>{syncError} Retrying every few seconds.</p>}
       {graphicsError && <p>{graphicsError}</p>}
       {startError && <p>{startError}</p>}
+      {owner.error && <p>{owner.error}</p>}
     </div>}
     {immersive && <button className="exit-immersive glass-button" onClick={() => {
       if (document.fullscreenElement) void fullscreen();
@@ -260,8 +313,8 @@ export function App() {
   </main>;
 }
 
-function UploadPage({ connected, syncError, synced, count }: {
-  connected: boolean; syncError: string; synced: boolean; count: number;
+function UploadPage({ owner, childNames, connected, syncError, synced, count }: {
+  owner: OwnerAccess; childNames: string[]; connected: boolean; syncError: string; synced: boolean; count: number;
 }) {
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [error, setError] = useState('');
@@ -281,9 +334,19 @@ function UploadPage({ connected, syncError, synced, count }: {
     }
   };
   return <main className="upload-page">
-    <header className="upload-header"><Logo /><a className="text-button" href={reefLink(token, demo)}>See aquarium ↗</a></header>
+    <header className="upload-header"><Logo /><div className="landing-nav"><a className="text-button" href={reefLink(token, demo)}>See aquarium ↗</a><OwnerButton owner={owner} /></div></header>
     {demo && <div className="demo-banner">Local demo — drawings stay in this browser, not on another device.</div>}
     {!connected ? <section className="capture-intro"><h1>This phone needs<br />an aquarium.</h1><p>{hasTank ? 'Supabase is not configured. Add the environment variables and redeploy to connect your devices.' : 'Scan the QR code on the laptop to open the correct upload link.'}</p><a className="button button-primary" href="/">Back home →</a></section>
+      : !owner.allowed ? <section className="capture-intro">
+        <span className="eyebrow">The owner’s drawing station</span>
+        <h1>Everyone can watch.<br /><em>Only you add the magic.</em></h1>
+        <p>Sign in with the owner’s GitHub account to add drawings and children’s first names. Parents don’t need an account to watch.</p>
+        <button className="button button-primary login-button" disabled={owner.loading} onClick={() => { void owner.signIn(); }}>
+          {owner.loading ? 'Checking your login…' : 'Sign in with GitHub'} <span aria-hidden="true">↗</span>
+        </button>
+        {owner.error && <p className="error" role="alert">{owner.error}</p>}
+        <a className="text-button" href={reefLink(token, demo)}>Just watch the reef →</a>
+      </section>
       : released ? <section className="success-page">
         <span className="success-mark" aria-hidden="true">✳</span>
         <span className="eyebrow">03 / Into the big blue</span>
@@ -292,7 +355,7 @@ function UploadPage({ connected, syncError, synced, count }: {
         <button className="button button-primary" onClick={() => { setReleased(''); setPhoto(null); }}>Add another drawing <span aria-hidden="true">＋</span></button>
         <a className="text-button" href={reefLink(token, demo)}>Watch the aquarium →</a>
       </section>
-      : photo ? <PhotoEditor photo={photo} token={token} demo={demo} onCancel={() => setPhoto(null)} onDone={(name) => { setReleased(name); setPhoto(null); }} />
+      : photo ? <PhotoEditor photo={photo} token={token} demo={demo} childNames={childNames} onCancel={() => setPhoto(null)} onDone={(name) => { setReleased(name); setPhoto(null); }} />
       : <section className="capture-intro">
         <span className="eyebrow">01 / From paper to possibility</span>
         <h1>One drawing.<br /><em>A whole new life.</em></h1>

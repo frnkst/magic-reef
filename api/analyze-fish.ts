@@ -1,24 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { createClient } from '@supabase/supabase-js';
 import { analysisSchema, parseAnalysis } from '../src/lib/analysis.ts';
+import { ApiError, ownerDatabase, ownerSettings, requireOwner } from '../server/owner.ts';
+import type { OwnerSettings } from '../server/owner.ts';
 
 interface ApiRequest extends IncomingMessage {
   body?: unknown;
 }
 
-interface Settings {
+interface Settings extends OwnerSettings {
   key?: string;
   model?: string;
   imageModel?: string;
-  supabaseUrl?: string;
-  supabaseKey?: string;
   allowDemo?: boolean;
-}
-
-class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
 }
 
 async function readBody(request: ApiRequest): Promise<unknown> {
@@ -61,6 +54,7 @@ export function createAnalysisHandler(settings: Settings) {
         throw new ApiError(415, 'The photo request must be JSON.');
       }
       if (!settings.key) throw new ApiError(503, 'AI is not configured. Add OPENROUTER_API_KEY on the server and restart or redeploy.');
+      await requireOwner(request, settings);
       const data = await readBody(request);
       if (!data || typeof data !== 'object') throw new ApiError(400, 'The photo request is invalid.');
       const body = data as Record<string, unknown>;
@@ -78,10 +72,7 @@ export function createAnalysisHandler(settings: Settings) {
         if (typeof body.token !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.token)) {
           throw new ApiError(403, 'Scan the aquarium’s QR code before preparing a fish.');
         }
-        if (!settings.supabaseUrl || !settings.supabaseKey) throw new ApiError(503, 'The shared aquarium database is not configured.');
-        const supabase = createClient(settings.supabaseUrl, settings.supabaseKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-        });
+        const supabase = ownerDatabase(settings);
         const { error } = await supabase.rpc('claim_fish_analysis', { tank_token: body.token });
         if (error) {
           if (error.code === 'P0001') throw new ApiError(429, error.message);
@@ -204,9 +195,8 @@ export function createAnalysisHandler(settings: Settings) {
 }
 
 export default createAnalysisHandler({
+  ...ownerSettings,
   key: process.env.OPENROUTER_API_KEY,
   model: process.env.OPENROUTER_MODEL,
   imageModel: process.env.OPENROUTER_IMAGE_MODEL,
-  supabaseUrl: process.env.VITE_SUPABASE_URL,
-  supabaseKey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
 });

@@ -5,14 +5,16 @@ import type { Fish } from '../lib/reef';
 
 type PreparedFish = Omit<Fish, 'id' | 'name'>;
 
-export function PhotoEditor({ photo, token, demo, onDone, onCancel }: {
+export function PhotoEditor({ photo, token, demo, childNames, onDone, onCancel }: {
   photo: HTMLImageElement;
   token: string | null;
   demo: boolean;
+  childNames: string[];
   onDone: (name: string) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState('');
+  const [child, setChild] = useState('');
   const [preview, setPreview] = useState<PreparedFish | null>(null);
   const [analysisError, setAnalysisError] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -48,7 +50,7 @@ export function PhotoEditor({ photo, token, demo, onDone, onCancel }: {
     setSubmitError('');
     const fishName = name.trim() || (preview.kind === 'plant' ? 'Little plant' : preview.kind === 'submarine' ? 'Little submarine' : 'Little fish');
     try {
-      await releaseFish(token, { ...preview, name: fishName }, demo);
+      await releaseFish(token, { ...preview, name: fishName, child: child.trim() }, demo);
       onDone(fishName);
     } catch (error) {
       setSubmitError(errorMessage(error));
@@ -103,7 +105,12 @@ export function PhotoEditor({ photo, token, demo, onDone, onCancel }: {
         </>}
         {preview && <>
           <p className="field-hint">{preview.kind === 'plant' ? 'This plant will stay anchored on the seabed.' : preview.kind === 'submarine' ? 'This submarine will cruise through the water. Sharks leave it alone.' : 'This fish will swim through the reef.'} Check the preview; choose a clearer photo if part of the drawing is missing.</p>
-          <label className="field-label" htmlFor="fish-name">What’s their name? <span>optional</span></label>
+          <label className="field-label" htmlFor="child-name">Who drew it? <span>optional</span></label>
+          <input id="child-name" type="text" placeholder="Child’s first name" maxLength={40} list="child-names"
+            value={child} disabled={busy} autoComplete="off" onChange={(event) => setChild(event.target.value)} />
+          <datalist id="child-names">{childNames.map((name) => <option key={name} value={name} />)}</datalist>
+          <p className="field-hint">Use an existing name or type a new one. Parents can filter the reef by this name. First names or nicknames only: names are visible to anyone with the link.</p>
+          <label className="field-label" htmlFor="fish-name">Drawing’s name <span>optional</span></label>
           <input id="fish-name" type="text" placeholder="e.g. Captain Bubbles" maxLength={40}
             value={name} disabled={busy} onChange={(event) => setName(event.target.value)} />
         </>}

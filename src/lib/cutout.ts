@@ -1,6 +1,7 @@
 import { parseAnalysis } from './analysis';
 import type { FishAnalysis, Point } from './analysis';
 import type { Fish } from './reef';
+import { ownerHeaders } from './auth';
 
 export async function openPhoto(file: File): Promise<HTMLImageElement> {
   if (!file.type.startsWith('image/')) throw new Error('Choose a photo or image of your drawing.');
@@ -36,10 +37,11 @@ export async function prepareFish(image: HTMLImageElement, token: string | null,
   const encoded = photo.toDataURL('image/jpeg', 0.85);
   if (encoded.length > 3_000_000) throw new Error('This photo is too detailed. Take a closer photo of just the drawing.');
   let response: Response;
+  const authorization = await ownerHeaders();
   try {
     response = await fetch('/api/analyze-fish', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...authorization, 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: encoded, token, demo, interpretation }),
       signal: AbortSignal.timeout(115_000),
     });

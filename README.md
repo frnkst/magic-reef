@@ -39,6 +39,7 @@ npm run dev
 
 Without environment variables, **Try the local demo** shows the starter aquarium.
 Preparing new drawings requires an OpenRouter key even in the local demo.
+Uploading also requires the configured owner's GitHub login.
 Demo drawings are saved in this browser's local storage; they do **not** sync
 between a phone and laptop. The shared aquarium requires Supabase.
 
@@ -46,9 +47,11 @@ between a phone and laptop. The shared aquarium requires Supabase.
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open the project's **SQL Editor**, paste all of `supabase/schema.sql`, and run
-   it once. Then run `supabase/ai.sql` and `supabase/drawings.sql`.
+   it once. Then run `supabase/ai.sql`, `supabase/drawings.sql`, and
+   `supabase/party.sql` in that order.
    For an existing aquarium, do not re-run `schema.sql`; run the other two
-   scripts to add the AI request budget and fish/submarine/plant support.
+   scripts and `party.sql` to add the AI request budget, drawing types,
+   child names, and owner-only write permissions.
 3. In the project's API settings, find the project URL and **publishable** key
    (the legacy **anon** key also works). Put them in `.env.local`:
 
@@ -57,23 +60,54 @@ between a phone and laptop. The shared aquarium requires Supabase.
    VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
    ```
 
-4. Restart the development server. **Create an aquarium** now creates a shared
+4. Configure GitHub owner login below, then restart the development server.
+   **Create an aquarium** now creates a shared
    room with its own permanent, unguessable link.
 
 Never put a Supabase **secret** or **service_role** key in the app or in a
 `VITE_` variable. The publishable key is intentionally public; database access
 is limited to the SQL functions. Tables have RLS enabled and no direct client
-access. Authentication, Supabase Storage, and Realtime configuration are not
-needed.
+access. Public viewing uses read-only functions; the Vercel server uses
+`SUPABASE_SECRET_KEY` for owner-authorized writes. Never expose that key in
+browser variables. Supabase Storage and Realtime configuration are not needed.
+
+## GitHub owner login
+
+1. In GitHub **Settings → Developer settings → OAuth Apps**, create an app with
+   the site's homepage and the callback URL shown by Supabase GitHub Auth,
+   normally `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`.
+2. Enable GitHub in Supabase Authentication and enter the client ID and secret.
+   The OAuth secret belongs **only in Supabase**, never in frontend code.
+3. Add the site's URL and local development URL to Supabase's allowed redirects
+   (for example `https://your-domain.example/**` and `http://localhost:5173/**`).
+4. Set `VITE_AUTH_SUPABASE_URL` and `VITE_AUTH_SUPABASE_PUBLISHABLE_KEY` to this
+   authentication project's public configuration. Normally this is the same
+   project as the aquarium database. A separate auth project is supported.
+5. Set server-only `ALLOWED_GITHUB_USER_ID` to the owner's immutable numeric
+   GitHub account ID, and server-only `SUPABASE_SECRET_KEY` to the **aquarium
+   database** secret/service-role key. The server verifies each access token
+   through Supabase Auth and checks its GitHub identity, not editable user metadata.
+6. Apply `supabase/party.sql`. It revokes all old anonymous and authenticated
+   write RPCs, including legacy `add_fish`, `add_drawing`, aquarium creation,
+   and AI budget reservations. Only the server's privileged role may write.
+7. Sign in using **Owner login**. Other accounts cannot upload or prepare
+   images, even if they call the API directly. Parents can view without login.
+   After the owner's first signup, Supabase new-user signups may be disabled
+   for an additional safeguard.
+
+Only this site's session is signed out; other apps using the same auth project
+are not signed out. Authentication state is stored in this browser. Habitz's
+paused project is not required by the deployed Magic Reef login.
 
 ## Deploy to Vercel
 
 1. Import this repository into Vercel. The framework is **Vite**.
-2. Add `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `OPENROUTER_API_KEY` to the production
-   environment variables.
+2. Add the Supabase, GitHub owner-auth, and OpenRouter variables from
+   `.env.example` to the production environment. Keep `SUPABASE_SECRET_KEY`,
+   `ALLOWED_GITHUB_USER_ID`, and `OPENROUTER_API_KEY` server-only.
 3. Deploy. Vercel runs `npm run build`, publishes `dist`, and deploys
-   `api/analyze-fish.ts` as a server-side function.
-4. Open the deployed HTTPS URL on the laptop, create an aquarium, and scan the
+   the analysis and owner-action API functions.
+4. Open the deployed HTTPS URL on the laptop, sign in as owner, create an aquarium, and scan the
    QR code on the phone. Leave the aquarium tab visible on the laptop.
 
 Environment variables are baked into the frontend build; redeploy after changing
@@ -135,14 +169,25 @@ model/provider availability depends on those settings.
   part of the drawing, choose a clearer photo or explicitly retry preparation.
 - Release the drawing. The laptop polls every three seconds and downloads only
   drawings it has not loaded before. Refreshing retains the aquarium.
+- At upload, **Who drew it?** accepts an optional child's first name or nickname.
+  Choose a previously used name or type a new one. It is separate from the drawing's
+  own name. Use **Whose drawings?** in the aquarium to see one child's artwork,
+  or **Everyone's reef** to see the whole party.
+- Select **Share reef**, then **Copy aquarium link** or **Send to parents**.
+  A selected child is included in the viewing link; parents can still switch
+  back to everyone. This is a viewing filter, not private access control.
+  Sharing sends the existing room's link, not a copy of its database.
+  Owner phone-upload QR codes appear only for the signed-in owner.
 - Use **Full screen** for an unobstructed view. Escape exits browser fullscreen.
   Created aquariums and successfully opened shared rooms are remembered in local
   storage. Go back to the homepage and select **Open your aquarium** to reopen
   the latest room. This is browser-specific; clearing site data or leaving a private
   browsing session removes the saved link. Bookmark the URL as a backup.
 - Select **Sound off** in the aquarium toolbar to enable soft aquarium water-flow
-  sound, without pitched bubble tones. Select **Sound on** to mute. Audio is generated locally with
-  Web Audio, starts only after your click, and pauses while the tab is hidden.
+  sound from the supplied `soul_serenity_sounds-water-noises-241049.mp3` recording.
+  `public/aquarium-water.wav` is a 20-second mono excerpt with a one-second
+  crossfaded loop join. Select **Sound on** to mute. The recording loads only after
+  your click, loops using Web Audio, and pauses while the tab is hidden.
 
 ## Printable coloring sheets
 
@@ -173,6 +218,8 @@ swims back in. There is **no age protection**, so new fish can be chosen too.
 The first pursuit starts after 12–22 seconds; later pursuits are spaced randomly
 20–45 seconds apart. The shark always faces its direction of travel and blinks
 occasionally. Gulping and returning happen without notification overlays.
+Its body and tail now undulate with the swimming rhythm, without bending its
+nose away from its travel direction; reduced motion disables that deformation.
 
 This is a local visual animation, not deletion: drawings remain in Supabase/local
 storage, and the fish count includes temporarily hidden fish. Each viewing screen
@@ -184,6 +231,16 @@ Submarines and plants are never shark targets. Plants have stable positions
 derived from their drawing IDs and do not drift, flip, or wiggle. Submarines
 glide more gently than fish and keep their rigid hulls. Existing saved drawings
 without a subject type continue behaving as fish.
+
+## The fishing visitor
+
+A little hook with a pink worm occasionally lowers into the water. The first
+visit starts after 25–50 seconds; later visits are 30–75 seconds apart. Some
+visits leave empty. On others, a fish swims over, takes the worm, and is gently
+lifted out. It returns after a **15-second break**, without notifications or
+database deletion. The shark and hook never target the same fish at once;
+submarines and plants are left alone. Timing is local to each viewer, pauses
+while the tab is hidden, and uses gentler movement with reduced motion.
 
 ## MVP limits and privacy
 
@@ -202,13 +259,15 @@ without a subject type continue behaving as fish.
 - Supabase's database stores the PNG data directly for simple MVP deployment.
   Full-size image storage, realtime subscriptions, and a management UI can be
   added later if needed.
-- **The aquarium link is its access key.** Anyone with it can view and add drawings.
-  Share it only with trusted people. There are no accounts or public room lists.
-  Sharing an upload link also grants viewing access.
+- **The aquarium link grants viewing access.** Anyone with it can view drawings
+  and associated first names; only the signed-in GitHub owner can add drawings.
+  Share it only with trusted people. There are no public room lists.
+  Sharing an upload link does not authorize uploads, but still grants viewing access.
+  Use first names or nicknames, not full names or other identifying details.
 - Data persists until the Supabase project owner removes it. There is no
   automated expiration or in-app deletion in this MVP. To delete a room, delete
   its row in the `tanks` table using Supabase's Table Editor; its fish cascade-delete.
-- Anonymous tank creation has a 1,000-room deployment cap and per-tank uploads
+- Owner-only tank creation has a 1,000-room deployment cap and per-tank uploads
   are capped/validated server-side. This is intended for a small, trusted-family
   deployment, not a large public service. Public launch needs additional abuse
   controls, storage budgeting, deletion/retention UX, and a privacy policy.

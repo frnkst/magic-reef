@@ -3,8 +3,11 @@
   "functions": {
     "api/analyze-fish.ts": {
       "maxDuration": 120,
-      "includeFiles": "src/lib/analysis.ts"
-    }
+      "includeFiles": "{src/lib/analysis.ts,server/owner.ts}"
+    },
+    "api/owner.ts": { "includeFiles": "server/owner.ts" },
+    "api/drawings.ts": { "includeFiles": "server/owner.ts" },
+    "api/tanks.ts": { "includeFiles": "server/owner.ts" }
   },
   "headers": [
     {
