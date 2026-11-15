@@ -205,24 +205,30 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     observer.observe(element);
     resize();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const sharkGeometry = new THREE.PlaneGeometry(3.6, 1.8, 32, 8);
+    const sharkGeometry = new THREE.PlaneGeometry(3.6, 1.8, 64, 24);
     const sharkSwimTime = { value: 0 };
     const sharkSwimMotion = { value: 1 };
+    const sharkChew = { value: 0 };
     const sharkMaterial = new THREE.MeshBasicMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
     });
     sharkMaterial.onBeforeCompile = (shader) => {
       shader.uniforms.sharkSwimTime = sharkSwimTime;
       shader.uniforms.sharkSwimMotion = sharkSwimMotion;
+      shader.uniforms.sharkChew = sharkChew;
       shader.vertexShader = `uniform float sharkSwimTime;
+        uniform float sharkChew;
         uniform float sharkSwimMotion;\n${shader.vertexShader}`.replace('#include <begin_vertex>', `
         #include <begin_vertex>
         float tail = 1.0 - uv.x;
         transformed.y += sin(sharkSwimTime * 3.8 + tail * 5.0) * tail * tail * 0.12 * sharkSwimMotion;
         transformed.x += sin(sharkSwimTime * 3.8 + tail * 5.0 + 1.0) * tail * tail * 0.018 * sharkSwimMotion;
+        float jaw = smoothstep(0.70, 0.79, uv.x) * (1.0 - smoothstep(0.88, 0.94, uv.x));
+        jaw *= smoothstep(0.22, 0.32, uv.y) * (1.0 - smoothstep(0.43, 0.46, uv.y));
+        transformed.y -= jaw * sharkChew * 0.16;
       `);
     };
-    sharkMaterial.customProgramCacheKey = () => 'magic-reef-shark-swimming';
+    sharkMaterial.customProgramCacheKey = () => 'magic-reef-shark-chewing';
     const shark = new THREE.Mesh(sharkGeometry, sharkMaterial);
     shark.position.set(0, 1.4, 1);
     shark.visible = false;
@@ -270,7 +276,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     let huntStartedAt = 0;
     let nextHuntAt = 180;
     let sharkDirection = 1;
-    let chompAt = -10;
+    let meal: { id: string; startedAt: number; direction: number } | null = null;
+    const biteDuration = 1.4;
     let nextBlinkAt = 4 + Math.random() * 5;
     let blinkUntil = 0;
     const fishingRig = new THREE.Group();
@@ -488,7 +495,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           fishingRig.position.y = fishingDepth;
           if (fishingWillCatch && !fishingTargetId && elapsed - fishingPhaseAt > 2) {
             const candidates = [...current.swimmers.values()].filter((swimmer) =>
-              (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.fish.movement !== 'walk' && swimmer.eatenAt === null && swimmer.fish.id !== targetId);
+              (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.fish.movement !== 'walk' && swimmer.eatenAt === null
+                && swimmer.fish.id !== targetId && swimmer.fish.id !== meal?.id);
             const choice = candidates[Math.floor(Math.random() * candidates.length)];
             if (choice) fishingTargetId = choice.fish.id;
           }
@@ -514,6 +522,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         const kind = drawing.kind ?? 'fish';
         const fit = drawingFit(drawing, height, current.width);
         mesh.material.uniforms.motion.value = reducedMotion.matches ? 0 : 1;
+        mesh.material.uniforms.bite.value = 0;
+        if (drawing.id === meal?.id) continue;
         if (kind === 'plant') {
           const position = plantPosition(drawing.id, current.width, height, drawing.aspect, fit);
           mesh.position.set(position.x, position.y, -0.5);
@@ -635,12 +645,16 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         const orbit = elapsed * (reducedMotion.matches ? 0.05 : 0.13);
         const destination = new THREE.Vector2(Math.cos(orbit) * horizontalRadius, Math.sin(orbit) * 2.4);
         let target = targetId ? current.swimmers.get(targetId) : undefined;
+        if (meal && !current.swimmers.has(meal.id)) {
+          meal = null;
+          nextHuntAt = elapsed + 180;
+        }
         if (targetId && (!target || target.eatenAt !== null || elapsed - huntStartedAt > 18)) {
           targetId = null;
           target = undefined;
           nextHuntAt = elapsed + 5;
         }
-        if (!targetId && elapsed >= nextHuntAt) {
+        if (!meal && !targetId && elapsed >= nextHuntAt) {
           const candidates = [...current.swimmers.values()].filter((swimmer) => (swimmer.fish.kind ?? 'fish') === 'fish' && swimmer.fish.movement !== 'walk' && swimmer.eatenAt === null && swimmer.fish.id !== fishingTargetId);
           const choice = candidates[Math.floor(Math.random() * candidates.length)];
           if (choice) {
@@ -661,6 +675,10 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           );
           destination.x = THREE.MathUtils.clamp(destination.x, -horizontalRadius, horizontalRadius);
         }
+        if (meal) {
+          sharkDirection = meal.direction;
+          destination.copy(shark.position);
+        }
         const dx = destination.x - shark.position.x;
         const dy = destination.y - shark.position.y;
         if (dx !== 0) sharkDirection = Math.sign(dx);
@@ -671,12 +689,10 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           shark.position.x += dx / distance * step;
           shark.position.y += dy / distance * step;
         }
-        const chomp = Math.max(0, 1 - (elapsed - chompAt) / 0.6);
-        const stretch = reducedMotion.matches ? 1 : 1 + Math.sin(chomp * Math.PI) * 0.08;
-        shark.scale.x = sharkDirection * sharkFit * stretch;
+        shark.scale.x = sharkDirection * sharkFit;
         shark.scale.y = sharkFit;
         const pitch = reducedMotion.matches ? 0 : THREE.MathUtils.clamp(Math.atan2(dy, Math.abs(dx) + 0.5) * sharkDirection, -0.25, 0.25);
-        shark.rotation.z = pitch;
+        shark.rotation.z = THREE.MathUtils.damp(shark.rotation.z, meal ? 0 : pitch, 3, delta);
         if (elapsed >= nextBlinkAt) {
           blinkUntil = elapsed + 0.18;
           nextBlinkAt = blinkUntil + 4 + Math.random() * 7;
@@ -687,10 +703,48 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         shark.localToWorld(mouth);
         if (target && Math.abs(shark.scale.x) > sharkFit * 0.8
           && Math.hypot(mouth.x - target.mesh.position.x, mouth.y - target.mesh.position.y) < 0.6 * sharkFit + target.height * 0.2) {
-          target.eatenAt = elapsed;
-          chompAt = elapsed;
+          meal = { id: target.fish.id, startedAt: elapsed, direction: sharkDirection };
           targetId = null;
           nextHuntAt = elapsed + 180;
+        }
+        sharkChew.value = 0;
+        const caught = meal ? current.swimmers.get(meal.id) : undefined;
+        if (meal && caught) {
+          const age = elapsed - meal.startedAt;
+          const biteIndex = Math.min(2, Math.floor(age / biteDuration));
+          const bitePhase = (age / biteDuration) % 1;
+          const bitten = Math.min(3, biteIndex + (bitePhase >= 0.42 ? 1 : 0)) / 3;
+          const feeding = THREE.MathUtils.smoothstep(bitePhase, 0.18, 0.42);
+          const consumed = Math.min(1, (biteIndex + feeding) / 3);
+          const jaw = bitePhase < 0.42
+            ? Math.sin(bitePhase / 0.42 * Math.PI)
+            : Math.sin((bitePhase - 0.42) / 0.58 * Math.PI * 2) ** 2 * 0.4;
+          sharkChew.value = jaw * (reducedMotion.matches ? 0.25 : 1);
+          const fit = drawingFit(caught.fish, caught.height, current.width);
+          const room = Math.max(0.2, current.width / 2 - mouth.x * meal.direction - 0.12);
+          const mealFit = Math.min(fit, sharkFit * 0.75 / caught.height, room / (caught.height * caught.fish.aspect));
+          const scale = THREE.MathUtils.damp(caught.mesh.scale.y, mealFit, 5, delta);
+          const width = caught.height * caught.fish.aspect * scale;
+          caught.mesh.scale.set(-meal.direction * (caught.fish.facing === 'right' ? 1 : -1) * scale, scale, 1);
+          caught.mesh.rotation.z = shark.rotation.z;
+          // Keep the uneaten edge at the mouth as each third slides behind the shark.
+          const offset = width * (0.5 - consumed) * meal.direction;
+          caught.mesh.position.set(
+            mouth.x + Math.cos(shark.rotation.z) * offset,
+            mouth.y + Math.sin(shark.rotation.z) * offset,
+            shark.position.z - 0.1,
+          );
+          caught.mesh.material.uniforms.bite.value = bitten;
+          caught.mesh.material.uniforms.opacity.value = 1;
+          caught.mesh.material.uniforms.motion.value = 0;
+          caught.mesh.visible = bitten < 1;
+          if (age >= biteDuration * 3) {
+            caught.eatenAt = elapsed - 0.5;
+            caught.mesh.visible = false;
+            meal = null;
+            sharkChew.value = 0;
+            nextHuntAt = elapsed + 180;
+          }
         }
       }
       for (const { bubble, fraction, baseY, speed } of bubbles) {
@@ -770,6 +824,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             bodySize: { value: new THREE.Vector2(height * drawing.aspect, height) },
             headRight: { value: drawing.facing === 'right' ? 1 : 0 },
             opacity: { value: 1 },
+            bite: { value: 0 },
             wiggle: { value: kind === 'fish' && drawing.movement !== 'walk' ? 1 : 0 },
             walking: { value: drawing.movement === 'walk' ? 1 : 0 },
           },
@@ -800,7 +855,11 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             varying vec2 vUv;
             uniform sampler2D drawing;
             uniform float opacity;
+            uniform float bite;
+            uniform float headRight;
             void main() {
+              float tail = mix(vUv.x, 1.0 - vUv.x, headRight);
+              if (tail < bite) discard;
               vec4 color = texture2D(drawing, vUv);
               if (color.a < 0.05) discard;
               gl_FragColor = vec4(color.rgb, color.a * opacity);
@@ -847,7 +906,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
   }, [fish, onError]);
 
   return (
-    <div className="aquarium" role="img" aria-label={`An underwater aquarium with ${fish.length} paper drawings, cruising submarines, stationary plants, a playful circling shark, and an occasional fishing hook with a worm. Gulped and caught fish return after a 15-second break.`}>
+    <div className="aquarium" role="img" aria-label={`An underwater aquarium with ${fish.length} paper drawings, cruising submarines, stationary plants, a playful shark that chews fish in three bites, and an occasional fishing hook with a worm. Eaten and caught fish return after a 15-second break.`}>
       <img className="reef-background" src="/reef-background.jpg" alt="" onError={() => {
         onError('The reef background could not be loaded. Reload the aquarium to try again.');
       }} />

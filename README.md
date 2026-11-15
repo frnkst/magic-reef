@@ -260,13 +260,16 @@ existing behavior; re-upload an old crab to give it the walking classification.
 ## The playful shark
 
 A friendly shark circles the water and occasionally pursues a randomly chosen
-fish. After a brief gulp animation, the fish takes a **15-second break** and then
-swims back in. There is **no age protection**, so new fish can be chosen too.
+fish. It pauses to eat the drawing in **three bites**, pulling each third into
+its mouth and visibly chewing between bites instead of fading the whole fish
+away. This is a playful paper-cutout effect with no gore. After the last chew,
+the fish takes a **15-second break** and then swims back in, fully restored.
+There is **no age protection**, so new fish can be chosen too.
 The first pursuit starts after three minutes of visible aquarium time. After each
 meal the shark waits at least another three minutes before pursuing a fish.
 Unsuccessful pursuits may retry, but never shorten that meal cooldown.
 The shark always faces its direction of travel and blinks
-occasionally. Gulping and returning happen without notification overlays.
+occasionally. Eating and returning happen without notification overlays.
 Its body and tail now undulate with the swimming rhythm, without bending its
 nose away from its travel direction; reduced motion disables that deformation.
 
@@ -274,7 +277,7 @@ This is a local visual animation, not deletion: drawings remain in Supabase/loca
 storage, and the fish count includes temporarily hidden fish. Each viewing screen
 has its own shark timing. Reloading shows all saved fish again. Animation time
 pauses while the tab is hidden; reduced-motion preferences slow the shark and
-remove its pitching and chomp stretch.
+remove its pitching and soften its jaw movement while keeping the three bites.
 
 Submarines and plants are never shark targets. Plants have stable positions
 derived from their drawing IDs and do not drift, flip, or wiggle. Submarines
