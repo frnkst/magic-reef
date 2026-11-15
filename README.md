@@ -230,12 +230,19 @@ plant drawings remain stationary.
 Choose **Small**, **Medium**, or **Large** before releasing any fish, submarine,
 or plant. Medium is the default, including for previously saved drawings.
 Fish and submarines are larger than before; Large is a bold centerpiece.
-Each fish also gets a stable, ID-based size variation of up to 8% either way,
-so companions in the same size category are not identical. Reloading or viewing
-on another device keeps that variation; submarines and plants keep their chosen size.
+Every drawing, including submarines, plants, and crabs, also gets a stable,
+ID-based size multiplier between **0.75 and 1.25**, so companions in the same
+size category are not identical. Reloading or viewing on another device keeps
+that variation.
 The same saved size is shown on every viewing screen, with responsive fitting
 to keep drawings inside narrow aquariums. Size does not redraw the artwork or
 make another AI request. Plants remain rooted to the seabed at every size.
+
+Swimming drawings follow individual, gently changing paths: slow depth changes,
+small vertical undulations, and occasional turns before the edge rather than
+identical laps. Speed eases slightly through turns, and depth changes blend
+gradually instead of jumping between lanes. Submarines have gentler bobbing and
+pitching; reduced motion slows travel and removes bobbing and pitching.
 
 Crabs are identified during photo preparation and saved as floor walkers.
 They scuttle sideways along the seabed, pause occasionally, and gently move

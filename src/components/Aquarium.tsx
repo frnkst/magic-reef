@@ -10,6 +10,9 @@ interface Swimmer {
   direction: number;
   phase: number;
   baseY: number;
+  targetY: number;
+  courseRemaining: number;
+  turnFraction: number;
   height: number;
   eatenAt: number | null;
 }
@@ -23,10 +26,9 @@ interface SceneState {
 }
 
 function sizeVariation(drawing: Fish) {
-  if (drawing.kind && drawing.kind !== 'fish') return 1;
   let hash = 2166136261;
   for (const character of drawing.id) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
-  return 0.92 + (hash % 1001) / 1000 * 0.16;
+  return 0.75 + (hash % 1001) / 1000 * 0.5;
 }
 
 function drawingHeight(drawing: Fish) {
@@ -440,28 +442,52 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           continue;
         }
         const bound = Math.max(0.1, current.width / 2 - height * drawing.aspect * fit / 2 - 0.12);
-        mesh.position.x += delta * swimmer.speed * swimmer.direction * (reducedMotion.matches ? 0.3 : 1);
-        if (mesh.position.x > bound) {
-          mesh.position.x = bound;
-          swimmer.direction = -1;
-        } else if (mesh.position.x < -bound) {
-          mesh.position.x = -bound;
-          swimmer.direction = 1;
+        const motion = reducedMotion.matches ? 0.3 : 1;
+        const speed = Math.min(swimmer.speed, bound / 5) * (1 + Math.sin(elapsed * 0.18 + swimmer.phase) * 0.12);
+        const turning = THREE.MathUtils.clamp(Math.abs(mesh.scale.x) / fit, 0.35, 1);
+        mesh.position.x += delta * speed * swimmer.direction * motion * turning;
+        mesh.position.x = THREE.MathUtils.clamp(mesh.position.x, -bound, bound);
+        const turnAt = bound * swimmer.turnFraction;
+        if (mesh.position.x * swimmer.direction >= turnAt) {
+          swimmer.direction *= -1;
+          swimmer.turnFraction = Math.random() < 0.4 ? 0.45 + Math.random() * 0.4 : 1;
         }
         const orientation = swimmer.direction * (drawing.facing === 'right' ? 1 : -1);
         const normalScale = swimmer.eatenAt === null
-          ? THREE.MathUtils.lerp(mesh.scale.x, orientation * fit, Math.min(1, delta * 4))
+          ? THREE.MathUtils.damp(mesh.scale.x, orientation * fit, 4, delta)
           : orientation * fit;
         mesh.scale.x = normalScale * appearance;
         mesh.scale.y = fit * appearance;
         mesh.material.uniforms.opacity.value = appearance;
-        mesh.position.y = swimmer.baseY + Math.sin(elapsed * (kind === 'submarine' ? 0.3 : 0.55) + swimmer.phase) * (kind === 'submarine' ? 0.1 : 0.2);
-        mesh.rotation.z = Math.sin(elapsed * 0.75 + swimmer.phase) * (reducedMotion.matches ? 0 : kind === 'submarine' ? 0.012 : 0.035);
+        const verticalLimit = Math.max(0.1, 4.35 - height * fit / 2);
+        swimmer.courseRemaining -= delta * motion;
+        if (swimmer.courseRemaining <= 0) {
+          swimmer.targetY = THREE.MathUtils.clamp(
+            swimmer.baseY + (Math.random() * 2 - 1) * (kind === 'submarine' ? 0.4 : 0.9),
+            -verticalLimit, verticalLimit,
+          );
+          swimmer.courseRemaining = 18 + Math.random() * 22;
+        }
+        swimmer.baseY = THREE.MathUtils.damp(
+          swimmer.baseY, THREE.MathUtils.clamp(swimmer.targetY, -verticalLimit, verticalLimit), 0.08, delta * motion,
+        );
+        const wave = reducedMotion.matches ? 0 : Math.sin(elapsed * (0.16 + swimmer.phase * 0.015) + swimmer.phase)
+          * (kind === 'submarine' ? 0.08 : 0.28);
+        const previousY = mesh.position.y;
+        mesh.position.y = THREE.MathUtils.damp(
+          previousY, THREE.MathUtils.clamp(swimmer.baseY + wave, -verticalLimit, verticalLimit), 0.8, delta * motion,
+        );
+        mesh.position.y = THREE.MathUtils.clamp(mesh.position.y, -verticalLimit, verticalLimit);
+        const pitch = reducedMotion.matches ? 0 : THREE.MathUtils.clamp(
+          Math.atan2(mesh.position.y - previousY, Math.max(delta * speed * motion, 0.001)) * swimmer.direction,
+          kind === 'submarine' ? -0.035 : -0.12, kind === 'submarine' ? 0.035 : 0.12,
+        );
+        mesh.rotation.z = THREE.MathUtils.damp(mesh.rotation.z, pitch, 2, delta);
         mesh.material.uniforms.time.value = reducedMotion.matches ? 0 : elapsed;
-        mesh.position.z = (swimmer.phase / 1.73 % 5) * 0.1;
+        mesh.position.z = swimmer.phase / (Math.PI * 2) * 0.4;
       }
       if (shark.visible) {
-        const sharkFit = Math.min(1, current.width * 0.55 / 3.6);
+        const sharkFit = Math.min(1, current.width * 0.55 / 3.6) * 1.5;
         const horizontalRadius = Math.max(0.1, current.width / 2 - 1.8 * sharkFit - 0.1);
         const orbit = elapsed * (reducedMotion.matches ? 0.05 : 0.13);
         const destination = new THREE.Vector2(Math.cos(orbit) * horizontalRadius, Math.sin(orbit) * 2.4);
@@ -587,7 +613,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           return;
         }
         texture.colorSpace = THREE.SRGBColorSpace;
-        const index = current.swimmers.size;
+        const phase = Math.random() * Math.PI * 2;
         const kind = drawing.kind ?? 'fish';
         const height = drawingHeight(drawing);
         const geometry = new THREE.PlaneGeometry(height * drawing.aspect, height, 24, 8);
@@ -595,7 +621,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           uniforms: {
             drawing: { value: texture },
             time: { value: 0 },
-            phase: { value: index * 1.73 },
+            phase: { value: phase },
             headRight: { value: drawing.facing === 'right' ? 1 : 0 },
             opacity: { value: 1 },
             wiggle: { value: kind === 'fish' && drawing.movement !== 'walk' ? 1 : 0 },
@@ -635,11 +661,13 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
           side: THREE.DoubleSide,
         });
         const mesh = new THREE.Mesh(geometry, material);
-        const direction = index % 2 === 0 ? -1 : 1;
-        const baseY = 2.8 - ((index * 1.91) % 5.4);
+        const direction = Math.random() < 0.5 ? -1 : 1;
         const fit = drawingFit(drawing, height, current.width);
+        const verticalLimit = Math.max(0.1, 4.35 - height * fit / 2);
+        const baseY = (Math.random() * 2 - 1) * verticalLimit * 0.8;
         mesh.scale.set(direction * (drawing.facing === 'right' ? 1 : -1) * fit, fit, 1);
-        mesh.position.set(((index * 0.382 + 0.22) % 1 - 0.5) * current.width * 0.7, baseY, (index % 5) * 0.1);
+        const bound = Math.max(0.1, current.width / 2 - height * drawing.aspect * fit / 2 - 0.12);
+        mesh.position.set((Math.random() * 2 - 1) * bound * 0.7, baseY, phase / (Math.PI * 2) * 0.4);
         if (kind === 'plant') {
           const position = plantPosition(drawing.id, current.width, height, drawing.aspect, fit);
           mesh.position.set(position.x, position.y, -0.5);
@@ -652,8 +680,11 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         current.scene.add(mesh);
         current.swimmers.set(drawing.id, {
           mesh, texture, fish: drawing, height, baseY, direction,
-          speed: kind === 'plant' ? 0 : kind === 'submarine' ? 0.4 : 0.32 + (index % 5) * 0.08,
-          phase: index * 1.73,
+          targetY: baseY,
+          courseRemaining: 18 + Math.random() * 22,
+          turnFraction: 1,
+          speed: kind === 'plant' ? 0 : kind === 'submarine' ? 0.32 + Math.random() * 0.12 : 0.32 + Math.random() * 0.32,
+          phase,
           eatenAt: null,
         });
       }, undefined, () => {
