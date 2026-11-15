@@ -98,13 +98,33 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         uniform vec2 cover;
         uniform float time;
         uniform float motion;
+        float caustics(vec2 p, float t) {
+          vec2 bend = vec2(sin(p.y * 1.2 + t * 0.32), sin(p.x * 0.9 - t * 0.27));
+          p += bend * 0.65;
+          float lattice = abs(sin(p.x + t * 0.12) * sin(p.y - t * 0.16));
+          return pow(1.0 - lattice, 14.0);
+        }
         void main() {
           vec2 uv = (vUv - 0.5) * cover + 0.5;
           float sides = 1.0 - smoothstep(0.25, 0.42, uv.x) + smoothstep(0.58, 0.75, uv.x);
-          float coral = sides * (1.0 - smoothstep(0.54, 0.76, uv.y)) * smoothstep(0.02, 0.20, uv.y);
-          float sway = sin(time * 0.65 + uv.y * 4.0 + step(0.5, uv.x) * 2.0);
-          uv.x += sway * coral * 0.0025 * motion;
-          gl_FragColor = texture2D(reef, uv);
+          float coral = sides * (1.0 - smoothstep(0.54, 0.76, uv.y)) * smoothstep(0.02, 0.32, uv.y);
+          coral *= smoothstep(0.0, 0.03, uv.x) * (1.0 - smoothstep(0.97, 1.0, uv.x));
+          float sway = sin(time * 0.45 + uv.y * 5.0 + step(0.5, uv.x) * 2.0);
+          float flutter = sin(time * 0.8 - uv.y * 13.0 + uv.x * 9.0);
+          vec2 reefUv = uv + vec2(sway * 0.007 + flutter * 0.0015, flutter * 0.0012) * coral * motion;
+          vec4 color = texture2D(reef, clamp(reefUv, 0.0, 1.0));
+          float sandWidth = mix(0.34, 0.08, smoothstep(0.0, 0.35, uv.y));
+          float sand = (1.0 - smoothstep(0.26, 0.40, uv.y))
+            * (1.0 - smoothstep(sandWidth * 0.65, sandWidth, abs(uv.x - 0.5)));
+          if (sand > 0.0 && motion > 0.0) {
+            vec2 floorUv = vec2((uv.x - 0.5) * 1.5, 0.65) / (uv.y + 0.16) * 4.0;
+            float light = caustics(floorUv, time) * 0.65
+              + caustics(mat2(0.8, -0.6, 0.6, 0.8) * floorUv * 1.6 + 4.0, -time * 0.7) * 0.35;
+            float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+            color.rgb += vec3(1.0, 0.96, 0.79) * (light * 0.16 - 0.025)
+              * sand * smoothstep(0.10, 0.45, brightness) * motion;
+          }
+          gl_FragColor = color;
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
         }
@@ -371,6 +391,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         const { mesh, height, fish: drawing } = swimmer;
         const kind = drawing.kind ?? 'fish';
         const fit = drawingFit(drawing, height, current.width);
+        mesh.material.uniforms.motion.value = reducedMotion.matches ? 0 : 1;
         if (kind === 'plant') {
           const position = plantPosition(drawing.id, current.width, height, drawing.aspect, fit);
           mesh.position.set(position.x, position.y, -0.5);
@@ -622,6 +643,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             drawing: { value: texture },
             time: { value: 0 },
             phase: { value: phase },
+            motion: { value: 0 },
+            bodySize: { value: new THREE.Vector2(height * drawing.aspect, height) },
             headRight: { value: drawing.facing === 'right' ? 1 : 0 },
             opacity: { value: 1 },
             wiggle: { value: kind === 'fish' && drawing.movement !== 'walk' ? 1 : 0 },
@@ -631,6 +654,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
             varying vec2 vUv;
             uniform float time;
             uniform float phase;
+            uniform float motion;
+            uniform vec2 bodySize;
             uniform float headRight;
             uniform float wiggle;
             uniform float walking;
@@ -638,9 +663,13 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
               vUv = uv;
               vec3 p = position;
               float tail = mix(uv.x, 1.0 - uv.x, headRight);
-              p.y += sin(time * 4.0 + tail * 5.0 + phase) * 0.035 * tail * tail * wiggle;
+              float stroke = time * (2.8 + phase * 0.12) + phase - tail * 3.5;
+              float bend = smoothstep(0.18, 1.0, tail) * tail;
+              p.y += sin(stroke) * bodySize.y * 0.07 * bend * wiggle * motion;
+              p.x += (1.0 - cos(stroke)) * bodySize.x * 0.025 * bend * tail
+                * (headRight * 2.0 - 1.0) * wiggle * motion;
               float legs = 1.0 - smoothstep(0.0, 0.55, uv.y);
-              p.x += sin(time * 9.0 + uv.x * 12.0 + phase) * legs * 0.045 * walking * step(0.001, time);
+              p.x += sin(time * 9.0 + uv.x * 12.0 + phase) * legs * 0.045 * walking * step(0.001, time) * motion;
               gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
             }
           `,

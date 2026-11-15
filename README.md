@@ -220,10 +220,12 @@ designed to help recognition, not to guarantee it; always check the AI preview.
 The aquarium uses an original AI-generated reef illustration at
 `public/reef-background.jpg`, with an open-water center and no baked-in fish.
 The same background appears in the homepage preview and shared/demo aquariums;
-the drawings and bubbles are animated separately in Three.js. A small UV sway
-is masked to the side coral regions, leaving the open water, surface, and central
-sand steady. Coral sway is disabled with reduced-motion preferences; uploaded
-plant drawings remain stationary.
+the drawings and bubbles are animated separately in Three.js. Layered, slow UV
+sway bends the side corals while keeping their bases and the open-water center
+steady. Warm, gently rippling sunlight patterns shimmer across the central sand,
+with perspective and soft edges to blend into the existing reef illustration.
+Both effects are disabled with reduced-motion preferences; uploaded plant
+drawings remain stationary.
 
 ## Drawing sizes
 
@@ -243,6 +245,10 @@ small vertical undulations, and occasional turns before the edge rather than
 identical laps. Speed eases slightly through turns, and depth changes blend
 gradually instead of jumping between lanes. Submarines have gentler bobbing and
 pitching; reduced motion slows travel and removes bobbing and pitching.
+Fish also have a traveling body-and-tail stroke, with a more pronounced tail
+sweep and slight tail foreshortening. Their faces stay steady so the original
+drawings remain recognizable. The stroke scales with the drawing's size, does
+not bend submarines, plants, or floor walkers, and is disabled by reduced motion.
 
 Crabs are identified during photo preparation and saved as floor walkers.
 They scuttle sideways along the seabed, pause occasionally, and gently move
