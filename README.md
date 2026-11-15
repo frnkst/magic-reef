@@ -283,7 +283,10 @@ without a subject type continue behaving as fish.
 
 ## The fishing visitor
 
-A little hook with a pink worm occasionally lowers into the water. The first
+A curved steel hook with a tapered point, small barb, and line eye occasionally
+lowers into the water on a translucent line. Its metallic highlights accompany
+a rounded, segmented earthworm with tapered ends, a thicker collar, and a slow
+wriggle in its free ends. Reduced motion keeps the worm still. The first
 visit starts after 25–50 seconds; later visits are 30–75 seconds apart. Some
 visits leave empty. On others, a fish swims over, takes the worm, and is gently
 lifted out. It returns after a **15-second break**, without notifications or

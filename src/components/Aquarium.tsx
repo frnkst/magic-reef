@@ -278,32 +278,153 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
     fishingRig.visible = false;
     fishingRig.position.z = 1.5;
     scene.add(fishingRig);
-    const hookMaterial = new THREE.MeshBasicMaterial({ color: '#c9ddd9', depthWrite: false });
-    const wormMaterial = new THREE.MeshBasicMaterial({ color: '#ed9e88', depthWrite: false });
+    const hookMaterial = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+          vNormal = normalize(normalMatrix * normal);
+          vView = -viewPosition.xyz;
+          gl_Position = projectionMatrix * viewPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vec3 n = normalize(vNormal);
+          vec3 view = normalize(vView);
+          vec3 reflected = reflect(-view, n);
+          float sky = smoothstep(-0.45, 0.75, reflected.y);
+          vec3 steel = mix(vec3(0.055, 0.12, 0.15), vec3(0.55, 0.72, 0.77), sky);
+          float glint = pow(max(dot(n, normalize(vec3(-0.45, 0.8, 1.0) + view)), 0.0), 85.0);
+          float strip = pow(max(0.0, 1.0 - abs(reflected.x * 0.65 + reflected.y * 0.4 - 0.25)), 28.0);
+          float rim = pow(1.0 - max(dot(n, view), 0.0), 3.0);
+          gl_FragColor = vec4(steel + vec3(0.75, 0.88, 0.9) * (glint * 0.8 + strip * 0.45 + rim * 0.2), 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }
+      `,
+    });
+    const wormTime = { value: 0 };
+    const wormMotion = { value: 1 };
+    const wormMaterial = new THREE.ShaderMaterial({
+      uniforms: { time: wormTime, motion: wormMotion },
+      vertexShader: `
+        uniform float time;
+        uniform float motion;
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vUv = uv;
+          vec3 p = position;
+          float freeEnd = smoothstep(0.0, 0.36, abs(uv.x - 0.48));
+          float wave = time * 1.9 - uv.x * 7.5;
+          p.x += sin(wave) * 0.045 * freeEnd * motion;
+          p.y += cos(wave * 0.83) * 0.025 * freeEnd * motion;
+          p.z += sin(wave + 1.4) * 0.018 * freeEnd * motion;
+          vec4 viewPosition = modelViewMatrix * vec4(p, 1.0);
+          vNormal = normalize(normalMatrix * normal);
+          vView = -viewPosition.xyz;
+          gl_Position = projectionMatrix * viewPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vec3 n = normalize(vNormal);
+          vec3 view = normalize(vView);
+          vec3 light = normalize(vec3(-0.5, 0.85, 1.2));
+          float diffuse = max(dot(n, light), 0.0);
+          float groove = pow(0.5 + 0.5 * cos(vUv.x * 52.0 * 6.283185), 14.0);
+          float collar = smoothstep(0.31, 0.33, vUv.x) * (1.0 - smoothstep(0.42, 0.44, vUv.x));
+          float mottling = sin(vUv.x * 73.0 + sin(vUv.y * 31.0)) * sin(vUv.y * 19.0) * 0.025;
+          vec3 skin = mix(vec3(0.57, 0.23, 0.19), vec3(0.76, 0.37, 0.29), collar);
+          skin += mottling - groove * (0.075 - collar * 0.04);
+          float sheen = pow(max(dot(n, normalize(light + view)), 0.0), 38.0);
+          vec3 color = skin * (0.48 + diffuse * 0.65) + vec3(1.0, 0.77, 0.65) * sheen * 0.22;
+          gl_FragColor = vec4(color, 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }
+      `,
+    });
     const hookCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0.6, 0), new THREE.Vector3(0, -0.15, 0),
-      new THREE.Vector3(0.16, -0.4, 0), new THREE.Vector3(0.4, -0.35, 0),
-      new THREE.Vector3(0.43, 0.05, 0),
+      new THREE.Vector3(0, 0.49, 0), new THREE.Vector3(-0.025, -0.13, 0),
+      new THREE.Vector3(0.035, -0.36, 0), new THREE.Vector3(0.22, -0.44, 0),
+      new THREE.Vector3(0.41, -0.34, 0), new THREE.Vector3(0.44, -0.10, 0),
+      new THREE.Vector3(0.40, 0.09, 0),
     ]);
-    const hookGeometry = new THREE.TubeGeometry(hookCurve, 32, 0.025, 6, false);
+    const hookGeometry = new THREE.TubeGeometry(hookCurve, 64, 0.023, 20, false);
+    const hookVertices = hookGeometry.attributes.position;
+    for (let i = 0; i < hookVertices.count; i++) {
+      const t = hookGeometry.attributes.uv.getX(i);
+      const center = hookCurve.getPointAt(t);
+      const taper = 1 - THREE.MathUtils.smoothstep(t, 0.84, 1);
+      hookVertices.setXYZ(i,
+        center.x + (hookVertices.getX(i) - center.x) * taper,
+        center.y + (hookVertices.getY(i) - center.y) * taper,
+        center.z + (hookVertices.getZ(i) - center.z) * taper,
+      );
+    }
+    hookGeometry.computeVertexNormals();
     fishingRig.add(new THREE.Mesh(hookGeometry, hookMaterial));
-    const barbGeometry = new THREE.ConeGeometry(0.05, 0.15, 6);
+    const eyeGeometry = new THREE.TorusGeometry(0.05, 0.018, 10, 24);
+    const eye = new THREE.Mesh(eyeGeometry, hookMaterial);
+    eye.position.set(0, 0.55, 0);
+    fishingRig.add(eye);
+    const barbGeometry = new THREE.ConeGeometry(0.018, 0.085, 10);
     const barb = new THREE.Mesh(barbGeometry, hookMaterial);
-    barb.position.set(0.41, 0.02, 0);
-    barb.rotation.z = 0.3;
+    barb.position.set(0.405, -0.035, 0);
+    barb.rotation.z = 2.7;
     fishingRig.add(barb);
     const wormCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.1, -0.22, 0.05), new THREE.Vector3(0.1, -0.1, 0.05),
-      new THREE.Vector3(0.32, -0.25, 0.05), new THREE.Vector3(0.5, -0.16, 0.05),
-      new THREE.Vector3(0.6, -0.4, 0.05),
+      new THREE.Vector3(0.02, -0.50, 0.06), new THREE.Vector3(-0.065, -0.36, 0.055),
+      new THREE.Vector3(0.01, -0.16, 0.045), new THREE.Vector3(0.21, -0.16, 0.06),
+      new THREE.Vector3(0.36, -0.27, 0.075), new THREE.Vector3(0.46, -0.14, 0.055),
+      new THREE.Vector3(0.55, -0.22, 0.06), new THREE.Vector3(0.58, -0.45, 0.065),
+      new THREE.Vector3(0.51, -0.62, 0.07),
     ]);
-    const wormGeometry = new THREE.TubeGeometry(wormCurve, 32, 0.06, 8, false);
+    const wormGeometry = new THREE.TubeGeometry(wormCurve, 256, 0.06, 20, false);
+    const wormVertices = wormGeometry.attributes.position;
+    for (let i = 0; i < wormVertices.count; i++) {
+      const t = wormGeometry.attributes.uv.getX(i);
+      const center = wormCurve.getPointAt(t);
+      const taper = Math.pow(Math.sin(Math.PI * t), 0.32);
+      const collar = 1 + THREE.MathUtils.smoothstep(t, 0.31, 0.33)
+        * (1 - THREE.MathUtils.smoothstep(t, 0.42, 0.44)) * 0.12;
+      const radius = taper * collar * (1 - 0.035 * Math.cos(t * 52 * Math.PI * 2));
+      wormVertices.setXYZ(i,
+        center.x + (wormVertices.getX(i) - center.x) * radius,
+        center.y + (wormVertices.getY(i) - center.y) * radius,
+        center.z + (wormVertices.getZ(i) - center.z) * radius,
+      );
+    }
+    wormGeometry.computeVertexNormals();
+    for (const geometry of [hookGeometry, wormGeometry]) {
+      const normals = geometry.attributes.normal;
+      const sides = geometry.parameters.radialSegments;
+      for (let ring = 0; ring <= geometry.parameters.tubularSegments; ring++) {
+        const first = ring * (sides + 1);
+        const last = first + sides;
+        const normal = new THREE.Vector3().fromBufferAttribute(normals, first)
+          .add(new THREE.Vector3().fromBufferAttribute(normals, last)).normalize();
+        normals.setXYZ(first, normal.x, normal.y, normal.z);
+        normals.setXYZ(last, normal.x, normal.y, normal.z);
+      }
+    }
+    wormGeometry.computeBoundingSphere();
+    if (wormGeometry.boundingSphere) wormGeometry.boundingSphere.radius += 0.06;
     const worm = new THREE.Mesh(wormGeometry, wormMaterial);
     worm.name = 'fishing-worm';
     fishingRig.add(worm);
     const lineGeometry = new THREE.PlaneGeometry(0.012, 1);
     const lineMaterial = new THREE.MeshBasicMaterial({
-      color: '#e9f1db', transparent: true, opacity: 0.65, depthWrite: false,
+      color: '#cee5e1', transparent: true, opacity: 0.42, depthWrite: false,
     });
     const fishingLine = new THREE.Mesh(lineGeometry, lineMaterial);
     fishingLine.name = 'fishing-line';
@@ -385,7 +506,8 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
         const lineLength = Math.max(0.01, 7 - fishingRig.position.y - 0.6);
         fishingLine.scale.y = lineLength;
         fishingLine.position.set(fishingRig.position.x, 7 - lineLength / 2, 1.4);
-        worm.rotation.z = reducedMotion.matches ? 0 : Math.sin(elapsed * 3) * 0.08;
+        wormTime.value = elapsed;
+        wormMotion.value = reducedMotion.matches ? 0 : 1;
       }
       for (const swimmer of current.swimmers.values()) {
         const { mesh, height, fish: drawing } = swimmer;
@@ -598,6 +720,7 @@ export function Aquarium({ fish, onError }: { fish: Fish[]; onError: (message: s
       sharkTexture?.dispose();
       sharkBlinkTexture?.dispose();
       hookGeometry.dispose();
+      eyeGeometry.dispose();
       barbGeometry.dispose();
       wormGeometry.dispose();
       lineGeometry.dispose();
